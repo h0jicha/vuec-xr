@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, OrbitControls } from '@react-three/drei'
@@ -8,7 +8,7 @@ import { VRM, VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm'
 import { Group, Object3D, Vector3 } from 'three'
 import { useControls } from 'leva'
 
-export default function Avatar({ path = '/Arona220601_03.vrm' }) {
+const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0]}, ref) => {
   const { ...controls } = useControls({
     Head: { value: 0, min: -0.4, max: 0.4 },
     leftArm: { value: 0.37, min: -0.4, max: 0.4 },
@@ -27,6 +27,10 @@ export default function Avatar({ path = '/Arona220601_03.vrm' }) {
   const [progress, setProgress] = useState<number>(0)
   const avatar = useRef<VRM>()
   const [bonesStore, setBones] = useState<{ [part: string]: Object3D }>({})
+
+  const seed = useMemo(() => {
+    return Math.random()
+  }, [])
 
   // const avatarGroup = useRef<Group>()
   // const [avatarPosition, setAvatarPosition] = useState<Vector3>(new Vector3(0,0,0))
@@ -54,12 +58,12 @@ export default function Avatar({ path = '/Arona220601_03.vrm' }) {
           vrm.lookAt.target = camera
 
           // 初期位置設定
-          const p = camera.position.clone()
-          p.z += -1.0
-          p.y -= 1.2
-          vrm.scene.position.x = p.x
-          vrm.scene.position.y = p.y
-          vrm.scene.position.z = p.z
+          // const p = camera.position.clone()
+          // p.z += -1.0
+          // p.y -= 1.2
+          // vrm.scene.position.x = p.x
+          // vrm.scene.position.y = p.y
+          // vrm.scene.position.z = p.z
 
           // vrm.scene.castShadow = true
           // vrm.scene.receiveShadow = true
@@ -150,9 +154,9 @@ export default function Avatar({ path = '/Arona220601_03.vrm' }) {
     // }
 
     if (bonesStore.upperChest) {
-      bonesStore.upperChest.rotation.y = (Math.PI / 600) * Math.sin((t / 8) * Math.PI)
-      bonesStore.spine.position.y = (Math.PI / 400) * Math.sin((t / 2) * Math.PI)
-      bonesStore.spine.position.z = (Math.PI / 600) * Math.sin((t / 2) * Math.PI)
+      bonesStore.upperChest.rotation.y = (Math.PI / 600) * Math.sin((t / 8) * Math.PI + seed * 10)
+      bonesStore.spine.position.y = (Math.PI / 400) * Math.sin((t / 2) * Math.PI + seed * 10)
+      bonesStore.spine.position.z = (Math.PI / 600) * Math.sin((t / 2) * Math.PI + seed * 10)
     }
     if (bonesStore.head) {
       // bonesStore.head.rotation.y -= controls.Head * Math.PI
@@ -169,7 +173,7 @@ export default function Avatar({ path = '/Arona220601_03.vrm' }) {
     }
   })
   return (
-    <group>
+    <group position={position} ref={ref}>
       {gltf ? (
         <>
           <primitive object={gltf.scene} />
@@ -179,4 +183,6 @@ export default function Avatar({ path = '/Arona220601_03.vrm' }) {
       )}
     </group>
   )
-}
+})
+
+export default Avatar

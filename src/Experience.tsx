@@ -33,12 +33,14 @@ import React from 'react'
 export default function Experience() {
   // const [hitSound] = useState(() => new Audio('./hit.mp3'))
   const cube = useRef(null)
+  const avatar = useRef(null)
 
   const controls = useRef(null)
 
   const { speed } = useControls({ speed: 10.0 })
 
   const xr = useXR()
+  const { camera } = useThree()
 
   const moveForward = useKeyboardControls((state) => state.forward)
   const moveBackward = useKeyboardControls((state) => state.backward)
@@ -47,6 +49,14 @@ export default function Experience() {
 
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime()
+
+    if (avatar && avatar.current) {
+      // console.log(avatar.current.position)
+      const p = camera.position.clone()
+      p.z += -1.0
+      p.y -= 1.2
+      avatar.current.position.set(...p)
+    }
 
     // controls
     // https://github.com/mrdoob/three.js/blob/master/examples/misc_controls_pointerlock.html
@@ -82,7 +92,7 @@ export default function Experience() {
     })
   }
 
-  const hamburger = useGLTF('./hamburger.glb')
+  // const hamburger = useGLTF('./hamburger.glb')
 
   const cubesCount = 100
   const cubes = useRef()
@@ -121,7 +131,10 @@ export default function Experience() {
         background
       /> */}
 
-      <Avatar path='sampleF.vrm'/>
+      <Avatar path='sampleF.vrm' ref={avatar}/>
+      <Avatar path='transparent.vrm' position={[1,0,0]}/>
+      <Avatar path='transparent.vrm' position={[2,0,0]}/>
+      <Avatar path='transparent.vrm' position={[3,0,0]}/>
 
       <Physics gravity={[0, -9.81, 0]}>
 
