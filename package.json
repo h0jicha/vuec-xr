@@ -1,0 +1,33 @@
+{
+  "name": "vuec-xr",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@types/node": "^18.13.0",
+    "@types/react": "^18.0.28",
+    "@vitejs/plugin-react": "3.0",
+    "typescript": "^4.9.5",
+    "vite": "^4.0.4"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "1.0.6",
+    "@react-three/drei": "9.48.6",
+    "@react-three/fiber": "8.9.2",
+    "@react-three/rapier": "^0.9.0",
+    "@react-three/xr": "^5.2.0",
+    "@types/react": "18.0.26",
+    "@types/react-dom": "18.0.10",
+    "@types/three": "0.146.0",
+    "leva": "0.9.13",
+    "r3f-perf": "^6.5.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "socket.io-client": "^4.5.4",
+    "three": "0.146.0",
+    "three-stdlib": "^2.21.6"
+  }
+}
