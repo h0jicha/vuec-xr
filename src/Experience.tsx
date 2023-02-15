@@ -54,11 +54,15 @@ export default function Experience(props) {
   const socket = useStore(state => state.socket)
   const clientId = useStore(state => state.clientId)
   const setClientId = useStore(state => state.setClientId)
+  const connections = useStore(state => state.connections)
+  const setConnections = useStore(state => state.setConnections)
+  const delConnections = useStore(state => state.delConnections)
 
-  const [connections, setConnections] = useState(null)
+  // const [connections, setConnections] = useState(null)
 
+  console.log(connections)
 
-  // マウスの座標をサーバーに送信する関数
+  // カメラの座標をサーバーに送信する関数
   const sendPosition = (position) => {
     if (!clientId) {
       return //
@@ -69,6 +73,18 @@ export default function Experience(props) {
       z: position.z
     }
     socket.emit('send_position', positionData)
+  }
+  // カメラの回転をサーバーに送信する関数
+  const sendRotation = (rotation) => {
+    if (!clientId) {
+      return //
+    }
+    const rotationData = {
+      x: rotation.x,
+      y: rotation.y,
+      z: rotation.z
+    }
+    socket.emit('send_rotation', rotationData)
   }
 
   useEffect(() => {
@@ -87,15 +103,19 @@ export default function Experience(props) {
       })
       socket.emit('current_connections')
 
-      // 他アバターの座標受け取り
-      socket.on('receive_position', (positionData) => {
-        console.log(positionData)
-        if (avatarGroup && avatarGroup.current && positionData.id != clientId){
+      // 他クライアントの座標回転受け取り
+      socket.on('receive_client_info', (clientInfo) => {
+        // console.log(clientInfo)
+        setConnections(clientInfo)
+
+        // viewもここで変更しちゃう
+        if (avatarGroup && avatarGroup.current && clientInfo.id != clientId){
           const a = avatarGroup.current.children.find((avatar) => {
-            return avatar.avatarId === positionData.id
+            return avatar.avatarId === clientInfo.id
           })
           if (a) {
-            a.position.set(positionData.x, positionData.y - 1.2, positionData.z + 1.0)
+            a.position.set(clientInfo.position.x, 0/*clientInfo.position.y - 1.2*/, clientInfo.position.z + 1.0)
+            a.rotation.set(0, clientInfo.rotation.y + Math.PI * 1.0, 0)
           }
         }
       })
@@ -103,7 +123,17 @@ export default function Experience(props) {
       // 定期的に座標を投げることにしてる
       setInterval(() => {
         sendPosition(camera.position)
+        sendRotation(camera.rotation)
       }, 1000)
+
+      // 誰かの退室時
+      socket.on('delete_connection', (id) => {
+        console.log('退室:', id)
+        delConnections(id)
+        const avatar = avatarGroup.current.children.find((avatar) => avatar.avatarId === id)
+        console.log(avatar)
+        avatarGroup.current.remove(avatar)
+      })
     });
 
     socket.emit('check_id')
@@ -111,14 +141,6 @@ export default function Experience(props) {
 
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime()
-
-    // if (avatar && avatar.current) {
-    //   // console.log(avatar.current.position)
-    //   const p = camera.position.clone()
-    //   p.z += -1.0
-    //   p.y -= 1.2
-    //   avatar.current.position.set(...p)
-    // }
 
     // controls
     // https://github.com/mrdoob/three.js/blob/master/examples/misc_controls_pointerlock.html
@@ -191,17 +213,22 @@ export default function Experience(props) {
       <directionalLight castShadow position={[1, 2, 3]} intensity={5} />
       <ambientLight intensity={0.4} />
 
-      {/* <Environment
+      <Environment
         // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
         files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
         background
-      /> */}
+      />
 
       <Avatar path='sampleF.vrm' ref={avatar} />
       <group ref={avatarGroup}>        
-        {connections && Object.entries(connections).map(entry => {
-          const [id, pos] = entry
-          return <Avatar position={pos} key={id} avatarId={id}/>
+      {connections && Object.entries(connections).map(entry => {
+          const [id, content] = entry
+          // let position, rotation = null
+          // if (id && content.position && content.rotation) {
+          //   position = [content.position.x, content.position.y - 1.2, content.position.z + 1.0]
+          //   rotation = [0, content.rotation.y + Math.PI, 0]
+          // }
+          return <Avatar key={id} avatarId={id}/>
         })}
       </group>
       <Avatar path='transparent.vrm' position={[1, 0, 0]} />
@@ -216,6 +243,7 @@ export default function Experience(props) {
         </RigidBody>
 
         <InstancedRigidBodies
+          type='fixed'
           positions={cubeTransforms.positions}
           rotations={cubeTransforms.rotations}
           scales={cubeTransforms.scales}

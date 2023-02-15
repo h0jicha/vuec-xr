@@ -11,7 +11,7 @@ import { useControls } from 'leva'
 /**
  * avatarId コンポーネントを一意に識別するためのid
  */
-const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0], avatarId}, ref) => {
+const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0], rotation = [0, 0, 0], avatarId}, ref) => {
   const { ...controls } = useControls({
     Head: { value: 0, min: -0.4, max: 0.4 },
     leftArm: { value: 0.37, min: -0.4, max: 0.4 },
@@ -75,7 +75,7 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
           // console.log(vrm.blendShapeProxy.exp  ressions)
           // console.log(vrm.expressionManager.expressions)
           const expressionNames = vrm.expressionManager.expressions.map((expression) => expression.expressionName)
-          console.log(expressionNames)
+          // console.log(expressionNames)
           // VRMUtils.rotateVRM0(vrm)
 
           const bones = {
@@ -176,7 +176,7 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
     }
   })
   return (
-    <group position={position} ref={ref} avatarId={avatarId}>
+    <group position={position} rotation={rotation} ref={ref} avatarId={avatarId}>
       {gltf ? (
         <>
           <primitive object={gltf.scene} />
