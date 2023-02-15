@@ -8,7 +8,10 @@ import { VRM, VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm'
 import { Group, Object3D, Vector3 } from 'three'
 import { useControls } from 'leva'
 
-const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0]}, ref) => {
+/**
+ * avatarId コンポーネントを一意に識別するためのid
+ */
+const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0], avatarId}, ref) => {
   const { ...controls } = useControls({
     Head: { value: 0, min: -0.4, max: 0.4 },
     leftArm: { value: 0.37, min: -0.4, max: 0.4 },
@@ -173,7 +176,7 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0]}
     }
   })
   return (
-    <group position={position} ref={ref}>
+    <group position={position} ref={ref} avatarId={avatarId}>
       {gltf ? (
         <>
           <primitive object={gltf.scene} />

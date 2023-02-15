@@ -36,9 +36,9 @@ root.render(
           // position: [90, 1.4, 90],
         }}
       >
-        <XRExperience />
+        <XRExperience/>
       </Canvas>
-      <Explanation />
+      <Explanation/>
       <ARButton />
       <Bgm />
     </KeyboardControls>
