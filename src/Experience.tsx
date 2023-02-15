@@ -33,6 +33,9 @@ import React from 'react'
 import { io, Socket } from 'socket.io-client'
 import useStore from './store/useStore'
 
+import { gsap } from "gsap";
+
+
 export default function Experience(props) {
   // const [hitSound] = useState(() => new Audio('./hit.mp3'))
   const cube = useRef(null)
@@ -42,6 +45,7 @@ export default function Experience(props) {
   const controls = useRef(null)
 
   const { speed } = useControls({ speed: 10.0 })
+  const { showEnv } = useControls({ showEnv: true })
 
   const xr = useXR()
   const { camera } = useThree()
@@ -114,8 +118,29 @@ export default function Experience(props) {
             return avatar.avatarId === clientInfo.id
           })
           if (a) {
-            a.position.set(clientInfo.position.x, 0/*clientInfo.position.y - 1.2*/, clientInfo.position.z + 1.0)
-            a.rotation.set(0, clientInfo.rotation.y + Math.PI * 1.0, 0)
+            // console.log(a.position)
+            // position
+            const pos = {x: a.position.x, y: a.position.y, z: a.position.z }
+            gsap.to(pos, {
+              ease: 'power1.inOut',
+              x: clientInfo.position.x,
+              z: clientInfo.position.z,
+              duration: 3.0,
+              onUpdate: () => {
+                a.position.set(pos.x, 0/*clientInfo.position.y - 1.2*/, pos.z)
+              }
+            });
+
+            // rotation
+            const rot = {x: a.rotation.x, y: a.rotation.y, z: a.rotation.z }
+            gsap.to(rot, {
+              ease: 'power1.inOut',
+              y: -clientInfo.rotation.y,
+              duration: 1.0,
+              onUpdate: () => {
+                a.rotation.set(0, rot.y, 0)
+              },
+            });
           }
         }
       })
@@ -213,11 +238,11 @@ export default function Experience(props) {
       <directionalLight castShadow position={[1, 2, 3]} intensity={5} />
       <ambientLight intensity={0.4} />
 
-      <Environment
+      {showEnv && <Environment
         // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
         files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
         background
-      />
+      />}
 
       <Avatar path='sampleF.vrm' ref={avatar} />
       <group ref={avatarGroup}>        
