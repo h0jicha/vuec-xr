@@ -1,37 +1,20 @@
 import {
-  useGLTF,
-  OrbitControls,
   Environment,
-  Html,
-  useProgress,
   useKeyboardControls,
   PointerLockControls,
-  Float,
 } from '@react-three/drei'
 import { Perf } from 'r3f-perf'
-import {
-  InstancedRigidBodies,
-  CylinderCollider,
-  BallCollider,
-  CuboidCollider,
-  Debug,
-  RigidBody,
-  Physics,
-} from '@react-three/rapier'
+
 import { useMemo, useEffect, useState, useRef, Suspense } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import * as THREE from 'three'
 import { UECSite } from './UECSite'
-import Player from './Player.js'
 // import Avatar from './vrmutils/Avatar'
 import Avatar from './Avatar'
 import Ocean from './Ocean'
 import { useControls } from 'leva'
 import { useXR } from '@react-three/xr'
-import { log } from 'console'
 import React from 'react'
 
-import { io, Socket } from 'socket.io-client'
 import useStore from './store/useStore'
 
 import { gsap } from "gsap";
@@ -39,8 +22,8 @@ import { gsap } from "gsap";
 
 export default function Experience(props) {
   // const [hitSound] = useState(() => new Audio('./hit.mp3'))
-  const cube = useRef(null)
-  const avatar = useRef(null)
+  // const cube = useRef(null)
+  // const avatar = useRef(null)
   const avatarGroup = useRef(null)
 
   const controls = useRef(null)
@@ -110,7 +93,6 @@ export default function Experience(props) {
 
       // 他クライアントの座標回転受け取り
       socket.on('receive_client_info', (clientInfo) => {
-        // console.log(clientInfo)
         setConnections(clientInfo)
 
         // viewもここで変更しちゃう
@@ -119,13 +101,12 @@ export default function Experience(props) {
             return avatar.avatarId === clientInfo.id
           })
           if (a) {
-            // console.log(a.position)
             // position
             const pos = {x: a.position.x, y: a.position.y, z: a.position.z }
             gsap.to(pos, {
               ease: 'power1.inOut',
               x: clientInfo.position.x,
-              y: clientInfo.position.y,
+              y: clientInfo.position.y -0.,
               z: clientInfo.position.z,
               duration: 1.0,
               onUpdate: () => {
@@ -169,10 +150,7 @@ export default function Experience(props) {
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime()
 
-    // console.log(camera.position)
-
     // controls
-    // https://github.com/mrdoob/three.js/blob/master/examples/misc_controls_pointerlock.html
     if (controls && controls.current.isLocked) {
       if (xr.session) {
         controls.current.unlock()
@@ -194,105 +172,37 @@ export default function Experience(props) {
     }
   })
 
-  const cubeJump = () => {
-    const mass = cube.current.mass()
-
-    cube.current.applyImpulse({ x: 0, y: 5 * mass, z: 0 })
-    cube.current.applyTorqueImpulse({
-      x: Math.random() - 0.5,
-      y: Math.random() - 0.5,
-      z: Math.random() - 0.5,
-    })
-  }
-
-  // const hamburger = useGLTF('./hamburger.glb')
-
-  const cubesCount = 100
-  const cubes = useRef()
-  const cubeTransforms = useMemo(() => {
-    const positions = []
-    const rotations = []
-    const scales = []
-
-    for (let i = 0; i < cubesCount; i++) {
-      positions.push([
-        (Math.random() - 0.5) * 80 * 3,
-        6 + i * 0.2,
-        (Math.random() - 0.5) * 80 * 3,
-      ])
-      rotations.push([Math.random(), Math.random(), Math.random()])
-
-      const scale = 0.2 + Math.random() * 0.8
-      scales.push([scale, scale, scale])
-    }
-
-    return { positions, rotations, scales }
-  }, [])
-
   return (
     <>
       <Perf position='top-left' />
-      <axesHelper scale={100} />
-      <gridHelper scale={1} />
+      {/* <axesHelper scale={100} />
+      <gridHelper scale={1} /> */}
 
       {/* <OrbitControls makeDefault maxPolarAngle={Math.PI * 0.5} /> */}
-      {/* https://threejs.org/docs/#examples/en/controls/PointerLockControls */}
       <PointerLockControls ref={controls} makeDefault />
 
       <directionalLight castShadow position={[1, 2, 3]} intensity={5} />
       <ambientLight intensity={0.4} />
 
       {showEnv ? <Environment
-        // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
-        files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
+        files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
+        // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
         background
       />
       :
       <Environment
-        // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
-        files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
+        files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
+        // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
       />}
 
-      <Avatar path='whiteGhost.vrm' ref={avatar} />
+      {/* <Avatar path='whiteGhost.vrm' ref={avatar} /> */}
       <group ref={avatarGroup}>        
       {connections && Object.entries(connections).map(entry => {
           const [id, content] = entry
-          // let position, rotation = null
-          // if (id && content.position && content.rotation) {
-          //   position = [content.position.x, content.position.y - 1.2, content.position.z + 1.0]
-          //   rotation = [0, content.rotation.y + Math.PI, 0]
-          // }
           return <Avatar key={id} avatarId={id}/>
         })}
       </group>
-      {/* <Avatar path='transparent.vrm' position={[1, 0, 0]} />
-      <Avatar path='transparent.vrm' position={[2, 0, 0]} />
-      <Avatar path='transparent.vrm' position={[3, 0, 0]} /> */}
-
-      <Physics gravity={[0, -9.81, 0]}>
-        <RigidBody type='fixed' colliders={'trimesh'} position={[0, 0, 0]}>
-          {/* <Suspense fallback={null}> */}
           <UECSite scale={1} position={[-74, 0, 55]}></UECSite>
-          {/* </Suspense> */}
-        </RigidBody>
-
-        <InstancedRigidBodies
-          type='fixed'
-          positions={cubeTransforms.positions}
-          rotations={cubeTransforms.rotations}
-          scales={cubeTransforms.scales}
-        >
-          <instancedMesh
-            ref={cubes}
-            castShadow
-            receiveShadow
-            args={[null, null, cubesCount]}
-          >
-            <boxGeometry />
-            <meshStandardMaterial color='tomato' />
-          </instancedMesh>
-        </InstancedRigidBodies>
-      </Physics>
     </>
   )
 }
