@@ -1,12 +1,10 @@
 import { io } from 'socket.io-client'
 import create, { State } from 'zustand'
 
-const ENDPOINT = 'http://192.168.11.2:3040'
+const ENDPOINT = 'http://104.198.111.108'
 
 const useStore = create<State>((set, get) => ({
-  socket: io(ENDPOINT, {
-    transports: ['websocket'],
-  }),
+  socket: io(ENDPOINT),
   clientId: null,
   setClientId: (id) => set(state => ({ clientId: id })),
   // increase: () => set(state => ({ count: state.count + 1 })),

@@ -125,7 +125,7 @@ export default function Experience(props) {
               ease: 'power1.inOut',
               x: clientInfo.position.x,
               z: clientInfo.position.z,
-              duration: 3.0,
+              duration: 1.0,
               onUpdate: () => {
                 a.position.set(pos.x, 0/*clientInfo.position.y - 1.2*/, pos.z)
               }
