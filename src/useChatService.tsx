@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 import useStore from './store/useStore'
 
-const ENDPOINT = 'http://104.198.111.108'
+const ENDPOINT = 'https://vuecxr.ddns.net'
 
 const useChatService = (initialMessage) => {
   const [messages, setMessages] = useState(initialMessage)
