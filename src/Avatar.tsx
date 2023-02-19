@@ -1,17 +1,18 @@
 import React, { forwardRef, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Html, OrbitControls } from '@react-three/drei'
+import { Float, Html, OrbitControls } from '@react-three/drei'
 import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { VRM, VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm'
 // import type * as VRMSchema from '@pixiv/types-vrm-0.0'
 import { Group, Object3D, Vector3 } from 'three'
 import { useControls } from 'leva'
+import { random } from 'gsap'
 
 /**
  * avatarId コンポーネントを一意に識別するためのid
  */
-const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0], rotation = [0, 0, 0], avatarId}, ref) => {
+const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0], avatarId}, ref) => {
   const { ...controls } = useControls({
     Head: { value: 0, min: -0.4, max: 0.4 },
     leftArm: { value: 0.37, min: -0.4, max: 0.4 },
@@ -34,6 +35,11 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
   const seed = useMemo(() => {
     return Math.random()
   }, [])
+
+  const paths = [
+    './ghostWhite.vrm',
+  ]
+  const path = vrmpath ?? paths[Math.floor(Math.random() * paths.length)]
 
   // const avatarGroup = useRef<Group>()
   // const [avatarPosition, setAvatarPosition] = useState<Vector3>(new Vector3(0,0,0))
@@ -127,8 +133,8 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
       // avatar.current.scene.position.y = p.y
       // avatar.current.scene.position.z = p.z
 
-      const blinkDelay = 10
-      const blinkFrequency = 3
+      const blinkDelay = 10 + Math.floor(seed * 3)
+      const blinkFrequency = 2 + Math.floor(seed * 4)
       if (Math.round(t * blinkFrequency) % blinkDelay === 0) {
         avatar.current.expressionManager.setValue('blink', 1 - Math.abs(Math.sin(t * blinkFrequency * Math.PI)))
       }
@@ -178,9 +184,16 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
   return (
     <group position={position} rotation={rotation} ref={ref} avatarId={avatarId}>
       {gltf ? (
+        <Float
+        speed={1 + seed} // Animation speed, defaults to 1
+        rotationIntensity={1} // XYZ rotation intensity, defaults to 1
+        floatIntensity={1} // Up/down float intensity, works like a multiplier with floatingRange,defaults to 1
+        floatingRange={[-0.1, 0.1]} // Range of y-axis values the object will float within, defaults to [-0.1,0.1]
+      >
         <>
           <primitive object={gltf.scene} />
         </>
+        </Float>
       ) : (
         <Html center>{progress} % loaded</Html>
       )}

@@ -6,6 +6,7 @@ import {
   useProgress,
   useKeyboardControls,
   PointerLockControls,
+  Float,
 } from '@react-three/drei'
 import { Perf } from 'r3f-perf'
 import {
@@ -44,7 +45,7 @@ export default function Experience(props) {
 
   const controls = useRef(null)
 
-  const { speed } = useControls({ speed: 10.0 })
+  const { speed } = useControls({ speed: 3.0 })
   const { showEnv } = useControls({ showEnv: true })
 
   const xr = useXR()
@@ -102,7 +103,7 @@ export default function Experience(props) {
 
       // 接続済みアバターの初期設定
       socket.on('current_connections', (conns) => {
-        console.log(conns)
+        console.log('入室:', conns)
         setConnections(conns)
       })
       socket.emit('current_connections')
@@ -124,10 +125,11 @@ export default function Experience(props) {
             gsap.to(pos, {
               ease: 'power1.inOut',
               x: clientInfo.position.x,
+              y: clientInfo.position.y,
               z: clientInfo.position.z,
               duration: 1.0,
               onUpdate: () => {
-                a.position.set(pos.x, 0/*clientInfo.position.y - 1.2*/, pos.z)
+                a.position.set(pos.x, pos.y, pos.z)
               }
             });
 
@@ -166,6 +168,8 @@ export default function Experience(props) {
 
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime()
+
+    // console.log(camera.position)
 
     // controls
     // https://github.com/mrdoob/three.js/blob/master/examples/misc_controls_pointerlock.html
@@ -238,13 +242,18 @@ export default function Experience(props) {
       <directionalLight castShadow position={[1, 2, 3]} intensity={5} />
       <ambientLight intensity={0.4} />
 
-      {showEnv && <Environment
+      {showEnv ? <Environment
         // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
         files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
         background
+      />
+      :
+      <Environment
+        // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
+        files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
       />}
 
-      <Avatar path='sampleF.vrm' ref={avatar} />
+      <Avatar path='whiteGhost.vrm' ref={avatar} />
       <group ref={avatarGroup}>        
       {connections && Object.entries(connections).map(entry => {
           const [id, content] = entry
@@ -256,14 +265,14 @@ export default function Experience(props) {
           return <Avatar key={id} avatarId={id}/>
         })}
       </group>
-      <Avatar path='transparent.vrm' position={[1, 0, 0]} />
+      {/* <Avatar path='transparent.vrm' position={[1, 0, 0]} />
       <Avatar path='transparent.vrm' position={[2, 0, 0]} />
-      <Avatar path='transparent.vrm' position={[3, 0, 0]} />
+      <Avatar path='transparent.vrm' position={[3, 0, 0]} /> */}
 
       <Physics gravity={[0, -9.81, 0]}>
         <RigidBody type='fixed' colliders={'trimesh'} position={[0, 0, 0]}>
           {/* <Suspense fallback={null}> */}
-          <UECSite scale={1} position={[90, 0, 90]}></UECSite>
+          <UECSite scale={1} position={[-74, 0, 55]}></UECSite>
           {/* </Suspense> */}
         </RigidBody>
 

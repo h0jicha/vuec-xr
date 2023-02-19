@@ -30,9 +30,9 @@ root.render(
         camera={{
           fov: 45,
           near: 0.1,
-          far: 5000,
-          position: [0, 1.7, 0],
-          rotation: [0, 0, 0],
+          far: 100,
+          position: [Math.random() * 10 - 5, 1.3, Math.random() * 10 - 5],
+          rotation: [0, Math.random() * 2 * Math.PI, 0]
           // position: [90, 1.4, 90],
         }}
       >

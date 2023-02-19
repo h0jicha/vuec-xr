@@ -9,7 +9,18 @@ export default function XRExperience() {
       <XR
         onSessionStart={(event) => {
           document.getElementById('root')!.hidden = true
-          console.log(event.nativeEvent.target)
+
+          // ずれを調整
+          console.log(event)
+
+          // HACK: ARView用のDOM要素が用意されるまで待つ
+          setTimeout(() => {
+            const divElements = document.querySelectorAll('body > div');
+            divElements.forEach((div) => {
+              console.log(div)
+              div.style.position = 'fixed';
+            }, 1000);
+          })
         }}
         onSessionEnd={(event) => {
           document.getElementById('root')!.hidden = false
