@@ -1,4 +1,11 @@
-import React, { forwardRef, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import React, {
+  forwardRef,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { createRoot } from 'react-dom/client'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Float, Html, OrbitControls } from '@react-three/drei'
@@ -8,11 +15,16 @@ import { VRM, VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm'
 import { Group, Object3D, Vector3 } from 'three'
 import { useControls } from 'leva'
 import { random } from 'gsap'
+import * as THREE from 'three'
+interface AvatarProps {
+  vrmpath: string
+  person: Person
+}
 
 /**
  * avatarId コンポーネントを一意に識別するためのid
  */
-const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0], avatarId}, ref) => {
+const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
   const { ...controls } = useControls({
     Head: { value: 0, min: -0.4, max: 0.4 },
     leftArm: { value: 0.37, min: -0.4, max: 0.4 },
@@ -36,10 +48,11 @@ const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0]
     return Math.random()
   }, [])
 
-  const paths = [
-    './ghostWhite.vrm',
-  ]
-  const path = vrmpath ?? paths[Math.floor(Math.random() * paths.length)]
+  // const paths = [
+  //   './ghostWhite.vrm',
+  // ]
+  // const path = vrmpath ?? paths[Math.floor(Math.random() * paths.length)]
+  const path = './ghostWhite.vrm'
 
   // const avatarGroup = useRef<Group>()
   // const [avatarPosition, setAvatarPosition] = useState<Vector3>(new Vector3(0,0,0))
@@ -77,10 +90,13 @@ const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0]
           // vrm.scene.castShadow = true
           // vrm.scene.receiveShadow = true
 
-          vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.Hips).rotation.y = Math.PI
+          vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.Hips).rotation.y =
+            Math.PI
           // console.log(vrm.blendShapeProxy.exp  ressions)
           // console.log(vrm.expressionManager.expressions)
-          const expressionNames = vrm.expressionManager.expressions.map((expression) => expression.expressionName)
+          const expressionNames = vrm.expressionManager.expressions.map(
+            (expression) => expression.expressionName
+          )
           // console.log(expressionNames)
           // VRMUtils.rotateVRM0(vrm)
 
@@ -89,9 +105,15 @@ const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0]
             neck: vrm.humanoid.getRawBoneNode(VRMHumanBoneName.Neck),
             hips: vrm.humanoid.getRawBoneNode(VRMHumanBoneName.Hips),
             spine: vrm.humanoid.getRawBoneNode(VRMHumanBoneName.Spine),
-            upperChest: vrm.humanoid.getRawBoneNode(VRMHumanBoneName.UpperChest),
-            leftArm: vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.LeftUpperArm),
-            rightArm: vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.RightUpperArm),
+            upperChest: vrm.humanoid.getRawBoneNode(
+              VRMHumanBoneName.UpperChest
+            ),
+            leftArm: vrm.humanoid.getNormalizedBoneNode(
+              VRMHumanBoneName.LeftUpperArm
+            ),
+            rightArm: vrm.humanoid.getNormalizedBoneNode(
+              VRMHumanBoneName.RightUpperArm
+            ),
           }
 
           // bones.rightArm.rotation.z = -Math.PI / 4
@@ -108,7 +130,7 @@ const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0]
         (error) => {
           console.log('An error happened')
           console.log(error)
-        },
+        }
       )
     }
   }, [scene, gltf, camera])
@@ -136,7 +158,10 @@ const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0]
       const blinkDelay = 10 + Math.floor(seed * 3)
       const blinkFrequency = 2 + Math.floor(seed * 4)
       if (Math.round(t * blinkFrequency) % blinkDelay === 0) {
-        avatar.current.expressionManager.setValue('blink', 1 - Math.abs(Math.sin(t * blinkFrequency * Math.PI)))
+        avatar.current.expressionManager.setValue(
+          'blink',
+          1 - Math.abs(Math.sin(t * blinkFrequency * Math.PI))
+        )
       }
       avatar.current.expressionManager.setValue('neutral', controls.Neutral)
       avatar.current.expressionManager.setValue('angry', controls.Angry)
@@ -163,9 +188,12 @@ const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0]
     // }
 
     if (bonesStore.upperChest) {
-      bonesStore.upperChest.rotation.y = (Math.PI / 600) * Math.sin((t / 8) * Math.PI + seed * 10)
-      bonesStore.spine.position.y = (Math.PI / 400) * Math.sin((t / 2) * Math.PI + seed * 10)
-      bonesStore.spine.position.z = (Math.PI / 600) * Math.sin((t / 2) * Math.PI + seed * 10)
+      bonesStore.upperChest.rotation.y =
+        (Math.PI / 600) * Math.sin((t / 8) * Math.PI + seed * 10)
+      bonesStore.spine.position.y =
+        (Math.PI / 400) * Math.sin((t / 2) * Math.PI + seed * 10)
+      bonesStore.spine.position.z =
+        (Math.PI / 600) * Math.sin((t / 2) * Math.PI + seed * 10)
     }
     if (bonesStore.head) {
       // bonesStore.head.rotation.y -= controls.Head * Math.PI
@@ -181,23 +209,46 @@ const Avatar = forwardRef(({ vrmpath, position = [0, 0, 0], rotation = [0, 0, 0]
       bonesStore.rightArm.rotation.z = controls.rightArm * Math.PI
     }
   })
+
+  const position = new THREE.Vector3(person.position?.x ?? 0, person.position?.y ?? 0, person.position?.z ?? 0)
+  let rotation = new THREE.Euler().setFromVector3(new THREE.Vector3(person.rotation?.x ?? 0, person.rotation?.y ?? 0, person.rotation?.z ?? 0))
+  const quert = new THREE.Quaternion().setFromEuler(rotation)
+  // quert.y = quert.y >= Math.PI ? quert.y - Math.PI : quert.y + Math.PI
+
+  console.log(quert)
+  // console.log(gltf.scene)
+  rotation = new THREE.Euler().setFromQuaternion(quert)
+
   return (
-    <group position={position} rotation={rotation} ref={ref} avatarId={avatarId}>
-      {gltf ? (
-        <Float
-        speed={1 + seed} // Animation speed, defaults to 1
-        rotationIntensity={1} // XYZ rotation intensity, defaults to 1
-        floatIntensity={1} // Up/down float intensity, works like a multiplier with floatingRange,defaults to 1
-        floatingRange={[-0.1, 0.1]} // Range of y-axis values the object will float within, defaults to [-0.1,0.1]
+    <>
+      <group
+        position={[position.x, position.y, position.z]}
+        rotation={rotation}
+        avatarId={avatarId}
+        ref={ref}
       >
-        <>
-          <primitive object={gltf.scene} />
-        </>
-        </Float>
-      ) : (
-        <Html center>{progress} % loaded</Html>
-      )}
-    </group>
+        <Html center occlude position={[0, 0.7, 0]}>
+        <p style={{fontSize: '5px'}}>{person.name}</p>
+        </Html>
+        <group
+        rotation={[0, Math.PI, 0]}>
+        {gltf ? (
+          <Float
+            speed={1 + seed} // Animation speed, defaults to 1
+            rotationIntensity={1} // XYZ rotation intensity, defaults to 1
+            floatIntensity={1} // Up/down float intensity, works like a multiplier with floatingRange,defaults to 1
+            floatingRange={[-0.1, 0.1]} // Range of y-axis values the object will float within, defaults to [-0.1,0.1]
+          >
+            <>
+              <primitive object={gltf.scene} />
+            </>
+          </Float>
+        ) : (
+          <Html center>{progress} % loaded</Html>
+        )}
+        </group>
+      </group>
+    </>
   )
 })
 
