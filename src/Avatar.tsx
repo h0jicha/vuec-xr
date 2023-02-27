@@ -25,18 +25,21 @@ interface AvatarProps {
  * avatarId コンポーネントを一意に識別するためのid
  */
 const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
+  console.log(person);
+  
   const { ...controls } = useControls({
     Head: { value: 0, min: -0.4, max: 0.4 },
     leftArm: { value: 0.37, min: -0.4, max: 0.4 },
     rightArm: { value: -0.37, min: -0.4, max: 0.4 },
-    Neutral: { value: 0, min: 0, max: 1 },
-    Angry: { value: 0, min: 0, max: 1 },
-    Relaxed: { value: 0, min: 0, max: 1 },
-    Happy: { value: 0, min: 0, max: 1 },
-    Sad: { value: 0, min: 0, max: 1 },
-    Surprised: { value: 0, min: 0, max: 1 },
-    Extra: { value: 0, min: 0, max: 1 },
+    // Neutral: { value: person.currentExpression?.Neutral ?? 0., min: 0., max: 1. },
+    // Angry: { value: person.currentExpression?.Angry ?? 0., min: 0., max: 1. },
+    // Relaxed: { value: person.currentExpression?.Relaxed ?? 0., min: 0., max: 1. },
+    // Happy: { value: person.currentExpression?.Happy ?? 0., min: 0., max: 1. },
+    // Sad: { value: person.currentExpression?.Sad ?? 0., min: 0., max: 1. },
+    // Surprised: { value: person.currentExpression?.Surprised ?? 0., min: 0., max: 1. },
+    // Extra: { value: 0, min: 0, max: 1 },
   })
+  
   const { scene, camera } = useThree()
   // const gltf = useGLTF('/three-vrm-girl.vrm')
   const [gltf, setGltf] = useState<GLTF>()
@@ -163,13 +166,13 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
           1 - Math.abs(Math.sin(t * blinkFrequency * Math.PI))
         )
       }
-      avatar.current.expressionManager.setValue('neutral', controls.Neutral)
-      avatar.current.expressionManager.setValue('angry', controls.Angry)
-      avatar.current.expressionManager.setValue('relaxed', controls.Relaxed)
-      avatar.current.expressionManager.setValue('happy', controls.Happy)
-      avatar.current.expressionManager.setValue('sad', controls.Sad)
-      avatar.current.expressionManager.setValue('Surprised', controls.Surprised)
-      avatar.current.expressionManager.setValue('Extra', controls.Extra)
+      avatar.current.expressionManager.setValue('neutral', person.currentExpression?.Neutral ?? 0.0)
+      avatar.current.expressionManager.setValue('angry', person.currentExpression?.Angry ?? 0.0)
+      avatar.current.expressionManager.setValue('relaxed', person.currentExpression?.Relaxed ?? 0.0)
+      avatar.current.expressionManager.setValue('happy', person.currentExpression?.Happy ?? 0.0)
+      avatar.current.expressionManager.setValue('sad', person.currentExpression?.Sad ?? 0.0)
+      avatar.current.expressionManager.setValue('Surprised', person.currentExpression?.Surprised ?? 0.0)
+      // avatar.current.expressionManager.setValue('Extra', 0.0)
     }
     if (bonesStore.neck) {
       bonesStore.neck.rotation.y = (Math.PI / 100) * Math.sin((t / 4) * Math.PI)
@@ -222,7 +225,7 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
   return (
     <>
       <group
-        position={[position.x, position.y, position.z]}
+        position={[position.x, position.y - 0.4, position.z]}
         rotation={rotation}
         avatarId={avatarId}
         ref={ref}

@@ -21,10 +21,6 @@ import { gsap } from 'gsap'
 import Dictaphone from './Dictaphone'
 import { Quaternion, Vector3, Euler } from 'three'
 
-interface PersonDict {
-  [personId: string]: Person
-}
-
 const EPSILON_ANGLE = 0.001
 
 export default function Experience(props) {
@@ -53,8 +49,10 @@ export default function Experience(props) {
   const setConnections = useStore((state) => state.setConnections)
   const addConnections = useStore((state) => state.addConnections)
   const delConnections = useStore((state) => state.delConnections)
+  const personDict = useStore<PersonDict>((state) => state.personDict)
+  const setPersonDict = useStore<(PersonDict: PersonDict) => void>((state) => state.setPersonDict)
 
-  const [personDict, setPersonDict] = useState<PersonDict>({})
+  // const [personDict, setPersonDict] = useState<PersonDict>({})
 
   // カメラの回転を判定するため
   const lastCameraRotationRef = useRef<Quaternion>(
@@ -211,7 +209,9 @@ export default function Experience(props) {
           Object.entries(personDict).map((arr) => {
             const [personId, person] = arr
             console.log(arr)
-            return <Avatar key={personId} avatarId={personId} person={person} />
+            if (personId !== myPersonId) {
+              return <Avatar key={personId} avatarId={personId} person={person} /> 
+            }
           })}
       </group>
     </>

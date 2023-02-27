@@ -39,3 +39,7 @@ interface Person {
   responsePolicyIterFunc: Function
   createdAt: string
 }
+
+interface PersonDict {
+  [personId: string]: Person
+}

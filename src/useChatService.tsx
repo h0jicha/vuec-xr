@@ -11,6 +11,8 @@ const useChatService = () => {
 
   const socket = useStore(state => state.socket)
 
+  const setPersonDict = useStore<(PersonDict) => void>(state => state.setPersonDict)
+
   useEffect(() => {
     console.log('[connecting...]')
 
@@ -18,6 +20,11 @@ const useChatService = () => {
       console.log('[message]', `from ${chatUnit.nameFrom}`, chatUnit.text)
       console.log(chatUnit)
       setChatUnits([...chatUnits, chatUnit])
+      setPersonDict({
+        [chatUnit.personIdFrom]: {
+          currentExpression: chatUnit.expression
+        }
+      })
     })
 
     // return () => {
