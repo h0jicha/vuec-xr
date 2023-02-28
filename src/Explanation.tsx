@@ -1,5 +1,5 @@
 import useChatService from './useChatService'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useKeyboardControls } from '@react-three/drei'
 import 'regenerator-runtime'
 import React from 'react'
@@ -7,12 +7,71 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from 'react-speech-recognition'
 import { button, useControls } from 'leva'
+import useControlsStore from './store/useControlsStore'
+import { useThree } from '@react-three/fiber'
+
+const STR_PLACEHOLDER = 'Enter to send'
 
 export default function Explanation() {
   const [chatUnits, sendMessage] = useChatService()
 
-  // const prompt = useRef(null)
+  const p1Ref = useRef<HTMLParagraphElement>(null)
+  const p2Ref = useRef<HTMLParagraphElement>(null)
 
+  /**
+   * Controls
+   */
+  // KeyboardControls
+  const textInputRef = useRef<HTMLInputElement>(null)
+  const setKeyboardControlsEnabled = useControlsStore(
+    (state) => state.setKeyboardControlsEnabled
+  )
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === '/' && textInputRef.current) {
+        textInputRef.current.focus()
+      }
+      if (event.key === 'Escape' && textInputRef.current) {
+        textInputRef.current.blur()
+      }
+      if (event.keyCode === 13 &&
+        textInputRef.current &&
+        textInputRef.current.value != ''
+      ) {
+        // IME変換確定でないEnter押下時
+        console.log(textInputRef.current.value)
+        // textInputRef.current.blur()
+        document.body.focus()
+        sendMessage(textInputRef.current.value)
+        textInputRef.current.value = ''
+
+        // 簡単にクールタイム実装
+        textInputRef.current.placeholder = `クールタイム中`
+        setTimeout(() => {
+          textInputRef.current.placeholder = STR_PLACEHOLDER
+        }, 1000)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
+  const handleTextAreaFocus = () => {
+    setKeyboardControlsEnabled(false)
+  }
+
+  const handleTextAreaBlur = () => {
+    setKeyboardControlsEnabled(true)
+  }
+
+  /**
+   * Speech Recognition
+   */
   const {
     transcript,
     listening,
@@ -23,37 +82,33 @@ export default function Explanation() {
   const { talk } = useControls({
     talk: browserSupportsSpeechRecognition
       ? button(() => {
-          // resetTranscript()
-          SpeechRecognition.startListening()
-          // const f = () => {
-          //   if (listening) {
-          //     setTimeout(f, 1000)
-          //   } else {
-          //     const text = document.getElementById('p2').innerText
-          //     console.log(text)
-          //     sendMessage(text)
-          //   }
-          // }
-          // setTimeout(f, 1000)
+        handleSpeechRecognitionStart()
         })
-      : '音声認識非対応の環境です',
+      : '音声認識非対応（chromeで入室してください）',
   })
   const { forceSend } = useControls({
     forceSend: browserSupportsSpeechRecognition
-      ? button(() => { 
-        sendMessage(document.getElementById('p2')?.innerText)
-        // resetTranscript()
-      })
-      : '音声認識非対応の環境です',
+      ? button(() => {
+        handleSpeechRecognitionFinish()
+        })
+      : '音声認識非対応（chromeで入室してください）',
   })
   console.log(listening)
+
+  const handleSpeechRecognitionStart = () => {
+    SpeechRecognition.startListening()
+  }
+
+  const handleSpeechRecognitionFinish = () => {
+    sendMessage(p2Ref.current?.innerText)
+  }
 
   useEffect(() => {
     const chatUnit: ChatUnit = chatUnits[chatUnits.length - 1]
 
     // 文章表示
     if (chatUnit?.text) {
-      printStringByChar(`${chatUnit.nameFrom}「${chatUnit.text}」`, 'p1')
+      printStringByChar(`${chatUnit.nameFrom}「${chatUnit.text}」`, p1Ref)
     }
 
     // 音声再生
@@ -65,45 +120,23 @@ export default function Explanation() {
     }
   }, [chatUnits])
 
-  // // 音声を再生する
-  // if (messages && messages.voice) {
-  //   const audio = new Audio()
-  //   audio.src = URL.createObjectURL(new Blob([messages.voice]))
-  //   audio.play()
-  //   messages.voice = null
-  // }
-
-  // const handleKeyDown = (e) => {
-  //   if (e.keyCode === 13) {
-  //     // prompt.current.disabled = true
-  //     // document.querySelector('.interface').style['pointer-events'] = 'none'
-
-  //     console.log(prompt.current)
-  //     sendMessage('あなた', prompt.current.value)
-  //     printStringByChar(prompt.current.value, 'question-text')
-  //     prompt.current.value = ''
-  //     document.getElementById('answer-text').innerText = '（思考中...）'
-  //   }
-  //   if (e.keyCode === 243) {
-  //     console.log('esc')
-  //   }
-  // }
-
-  // if (prompt.current) {
-  //   prompt.current.value = ''
-  //   prompt.current.disabled = true
-  //   document.querySelector('.interface').style['pointer-events'] = 'none'
-  //   // setTimeout(() => {
-  //   //   prompt.current.disabled = document.querySelector('.interface').style['pointer-events'] !== 'none' ? false : true
-  //   //   prompt.current.value = ''
-  //   // }, 3000)
-  // }
-
   return (
-    <div className='interface'>
-      <div className='explanation'>
-        <p id='p1'></p>
-        <p id='p2'>{transcript}</p>
+    <div className='explanation'>
+      <p ref={p1Ref}></p>
+      <div>
+        <input
+          type='text'
+          ref={textInputRef}
+          className='chat_input'
+          onFocus={handleTextAreaFocus}
+          onBlur={handleTextAreaBlur}
+          placeholder={STR_PLACEHOLDER}
+        />
+        {listening ?
+          <button disabled>認識中</button>
+          :
+          <button onClick={handleSpeechRecognitionStart}>マイクで話す</button>
+        }
       </div>
     </div>
   )
@@ -112,21 +145,21 @@ export default function Explanation() {
 const INCREMENTAL_MODE = true
 let interval: NodeJS.Timer
 
-function printStringByChar(string, id) {
+function printStringByChar(string, ref) {
   let i = 0
-  document.getElementById(id).innerText = ''
+  ref.current.innerText = ''
   interval = setInterval(function () {
     if (INCREMENTAL_MODE) {
       if (i < string.length) {
-        document.getElementById(id).innerText += string.charAt(i)
+        ref.current.innerText += string.charAt(i)
         i++
       } else {
         clearInterval(interval)
       }
     } else {
-      document.getElementById(id).innerText = string
+      ref.current.innerText = string
       clearInterval(interval)
     }
-    }, 80);
+  }, 40)
   // }, 3)
 }

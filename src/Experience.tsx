@@ -16,10 +16,11 @@ import { useXR } from '@react-three/xr'
 import React from 'react'
 
 import useStore from './store/useStore'
+import useControlsStore from './store/useControlsStore'
 
 import { gsap } from 'gsap'
 import Dictaphone from './Dictaphone'
-import { Quaternion, Vector3, Euler } from 'three'
+import { Quaternion, Vector3, Euler, Group } from 'three'
 
 const EPSILON_ANGLE = 0.001
 
@@ -27,21 +28,42 @@ export default function Experience(props) {
   // const [hitSound] = useState(() => new Audio('./hit.mp3'))
   // const cube = useRef(null)
   // const avatar = useRef(null)
-  const avatarGroup = useRef(null)
+  const avatarGroup = useRef<Group>(null)
 
-  const controls = useRef(null)
-
-  const { speed } = useControls({ speed: 3.0 })
-  const { showEnv } = useControls({ showEnv: true })
+  const { speed } = useControls({ speed: 5.0 })
+  const { ARViewSetting } = useControls({ ARViewSetting: false })
+  useControls({ 操作説明: `
+  - PC: マウスでカメラ操作+キーで移動
+  - スマホ: ARView（実験的）
+  ` })
 
   const xr = useXR()
-  const { camera } = useThree()
+  const { camera, canvas } = useThree()
 
+  /**
+   * Controls
+   */
+  // PointerLockControls
+  const pointerLockControlsRef = useRef<typeof PointerLockControls>(null)
+  const pointerLocked = useControlsStore<boolean>(
+    (state) => state.pointerLocked
+  )
+
+  // KeyboardControls
+  const keyboardControlsEnabled = useControlsStore(
+    (state) => state.keyboardControlsEnabled
+  )
   const moveForward = useKeyboardControls((state) => state.forward)
   const moveBackward = useKeyboardControls((state) => state.backward)
   const moveLeft = useKeyboardControls((state) => state.leftward)
   const moveRight = useKeyboardControls((state) => state.rightward)
 
+  // Debug mode
+  const { debugMode } = useControls({ debugMode: false })
+
+  /**
+   * Other States
+   */
   const socket = useStore((state) => state.socket)
   const myPersonId = useStore((state) => state.myPersonId)
   const setMyPersonId = useStore((state) => state.setMyPersonId)
@@ -50,7 +72,9 @@ export default function Experience(props) {
   const addConnections = useStore((state) => state.addConnections)
   const delConnections = useStore((state) => state.delConnections)
   const personDict = useStore<PersonDict>((state) => state.personDict)
-  const setPersonDict = useStore<(PersonDict: PersonDict) => void>((state) => state.setPersonDict)
+  const setPersonDict = useStore<(PersonDict: PersonDict) => void>(
+    (state) => state.setPersonDict
+  )
 
   // const [personDict, setPersonDict] = useState<PersonDict>({})
 
@@ -78,9 +102,9 @@ export default function Experience(props) {
       y: rotation.y,
       z: rotation.z,
     }
-    console.log('sendopose', p, r);
-    
-    socket.emit('send-pose', {position: p, rotation: r})
+    console.log('[send-pose]', p, r)
+
+    socket.emit('send-pose', { position: p, rotation: r })
   }
 
   useEffect(() => {
@@ -159,23 +183,29 @@ export default function Experience(props) {
     }
 
     // controls
-    if (controls && controls.current.isLocked) {
+    if (
+      keyboardControlsEnabled &&
+      pointerLockControlsRef.current &&
+      pointerLockControlsRef.current.isLocked
+    ) {
       if (xr.session) {
-        controls.current.unlock()
+        pointerLockControlsRef.current.unlock()
       }
+
+      // console.log(moveForward, moveBackward, moveLeft, moveRight);
 
       const velocity = { x: speed, y: speed, z: speed }
       if (moveForward) {
-        controls.current.moveForward(velocity.z * delta)
+        pointerLockControlsRef.current.moveForward(velocity.z * delta)
       }
       if (moveBackward) {
-        controls.current.moveForward(-velocity.z * delta)
+        pointerLockControlsRef.current.moveForward(-velocity.z * delta)
       }
       if (moveLeft) {
-        controls.current.moveRight(-velocity.x * delta)
+        pointerLockControlsRef.current.moveRight(-velocity.x * delta)
       }
       if (moveRight) {
-        controls.current.moveRight(velocity.x * delta)
+        pointerLockControlsRef.current.moveRight(velocity.x * delta)
       }
     }
 
@@ -185,13 +215,20 @@ export default function Experience(props) {
   return (
     <>
       {/* Debug */}
-      <Perf position='top-left' />
-      <axesHelper scale={10} />
-      {/* <gridHelper scale={1} /> */}
+      {debugMode ?? <>
+        <Perf position='top-left' />
+        <axesHelper scale={10} />
+        <gridHelper scale={1} />
+        </>
+      }
 
       {/* Controls */}
       {/* <OrbitControls makeDefault maxPolarAngle={Math.PI * 0.5} /> */}
-      <PointerLockControls ref={controls} makeDefault />
+      <PointerLockControls
+        ref={pointerLockControlsRef}
+        args={[camera, canvas]}
+        enabled={pointerLocked}
+      />
 
       {/* Environment */}
       <directionalLight castShadow position={[1, 2, 3]} intensity={5} />
@@ -199,7 +236,7 @@ export default function Experience(props) {
       <Environment
         files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
         // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
-        background={showEnv}
+        background={!ARViewSetting}
       />
 
       {/* Meshes */}
@@ -210,7 +247,9 @@ export default function Experience(props) {
             const [personId, person] = arr
             console.log(arr)
             if (personId !== myPersonId) {
-              return <Avatar key={personId} avatarId={personId} person={person} /> 
+              return (
+                <Avatar key={personId} avatarId={personId} person={person} />
+              )
             }
           })}
       </group>
