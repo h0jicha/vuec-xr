@@ -1,31 +1,47 @@
-import React, { forwardRef, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import React, {
+  forwardRef,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { createRoot } from 'react-dom/client'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Html, OrbitControls } from '@react-three/drei'
+import { Float, Html, OrbitControls } from '@react-three/drei'
 import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { VRM, VRMLoaderPlugin, VRMHumanBoneName } from '@pixiv/three-vrm'
 // import type * as VRMSchema from '@pixiv/types-vrm-0.0'
 import { Group, Object3D, Vector3 } from 'three'
 import { useControls } from 'leva'
+import { random } from 'gsap'
+import * as THREE from 'three'
+interface AvatarProps {
+  vrmpath: string
+  person: Person
+}
 
-/**
- * avatarId コンポーネントを一意に識別するためのid
- */
-const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0], rotation = [0, 0, 0], avatarId}, ref) => {
-  const { ...controls } = useControls({
-    Head: { value: 0, min: -0.4, max: 0.4 },
-    leftArm: { value: 0.37, min: -0.4, max: 0.4 },
-    rightArm: { value: -0.37, min: -0.4, max: 0.4 },
-    Neutral: { value: 0, min: 0, max: 1 },
-    Angry: { value: 0, min: 0, max: 1 },
-    Relaxed: { value: 0, min: 0, max: 1 },
-    Happy: { value: 0, min: 0, max: 1 },
-    Sad: { value: 0, min: 0, max: 1 },
-    Surprised: { value: 0, min: 0, max: 1 },
-    Extra: { value: 0, min: 0, max: 1 },
-  })
+const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
+  // static value
+  const controls = {
+    Head: 0,
+    leftArm: 0.37,
+    rightArm: -0.37
+  }
+  // const { ...controls } = useControls({
+  //   Head: { value: 0, min: -0.4, max: 0.4 },
+  //   leftArm: { value: 0.37, min: -0.4, max: 0.4 },
+  //   rightArm: { value: -0.37, min: -0.4, max: 0.4 },
+  //   // Neutral: { value: person.expression?.Neutral ?? 0., min: 0., max: 1. },
+  //   // Angry: { value: person.expression?.Angry ?? 0., min: 0., max: 1. },
+  //   // Relaxed: { value: person.expression?.Relaxed ?? 0., min: 0., max: 1. },
+  //   // Happy: { value: person.expression?.Happy ?? 0., min: 0., max: 1. },
+  //   // Sad: { value: person.expression?.Sad ?? 0., min: 0., max: 1. },
+  //   // Surprised: { value: person.expression?.Surprised ?? 0., min: 0., max: 1. },
+  //   // Extra: { value: 0, min: 0, max: 1 },
+  // })
+
   const { scene, camera } = useThree()
-  // const gltf = useGLTF('/three-vrm-girl.vrm')
   const [gltf, setGltf] = useState<GLTF>()
   const [progress, setProgress] = useState<number>(0)
   const avatar = useRef<VRM>()
@@ -35,17 +51,15 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
     return Math.random()
   }, [])
 
-  // const avatarGroup = useRef<Group>()
-  // const [avatarPosition, setAvatarPosition] = useState<Vector3>(new Vector3(0,0,0))
-
-  // const loader = new GLTFLoader()
-  // loader.register((parser) => new VRMLoaderPlugin(parser)) // here we are installing VRMLoaderPlugin
+  // const paths = [
+  //   './ghostWhite.vrm',
+  // ]
+  // const path = vrmpath ?? paths[Math.floor(Math.random() * paths.length)]
+  const path = './ghostWhite.vrm'
 
   useEffect(() => {
     if (!gltf) {
       // VRMUtils.removeUnnecessaryJoints(gltf.scene)
-
-      // VRM.from(gltf as GLTF).then((vrm) => {
 
       const loader = new GLTFLoader()
       loader.register((parser) => {
@@ -60,21 +74,11 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
           avatar.current = vrm
           vrm.lookAt.target = camera
 
-          // 初期位置設定
-          // const p = camera.position.clone()
-          // p.z += -1.0
-          // p.y -= 1.2
-          // vrm.scene.position.x = p.x
-          // vrm.scene.position.y = p.y
-          // vrm.scene.position.z = p.z
-
-          // vrm.scene.castShadow = true
-          // vrm.scene.receiveShadow = true
-
-          vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.Hips).rotation.y = Math.PI
-          // console.log(vrm.blendShapeProxy.exp  ressions)
-          // console.log(vrm.expressionManager.expressions)
-          const expressionNames = vrm.expressionManager.expressions.map((expression) => expression.expressionName)
+          vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.Hips).rotation.y =
+            Math.PI
+          const expressionNames = vrm.expressionManager.expressions.map(
+            (expression) => expression.expressionName
+          )
           // console.log(expressionNames)
           // VRMUtils.rotateVRM0(vrm)
 
@@ -83,9 +87,15 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
             neck: vrm.humanoid.getRawBoneNode(VRMHumanBoneName.Neck),
             hips: vrm.humanoid.getRawBoneNode(VRMHumanBoneName.Hips),
             spine: vrm.humanoid.getRawBoneNode(VRMHumanBoneName.Spine),
-            upperChest: vrm.humanoid.getRawBoneNode(VRMHumanBoneName.UpperChest),
-            leftArm: vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.LeftUpperArm),
-            rightArm: vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.RightUpperArm),
+            upperChest: vrm.humanoid.getRawBoneNode(
+              VRMHumanBoneName.UpperChest
+            ),
+            leftArm: vrm.humanoid.getNormalizedBoneNode(
+              VRMHumanBoneName.LeftUpperArm
+            ),
+            rightArm: vrm.humanoid.getNormalizedBoneNode(
+              VRMHumanBoneName.RightUpperArm
+            ),
           }
 
           // bones.rightArm.rotation.z = -Math.PI / 4
@@ -96,49 +106,58 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
         // called as loading progresses
         (xhr) => {
           setProgress((xhr.loaded / xhr.total) * 100)
-          console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
+          // console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
         },
         // called when loading has errors
         (error) => {
           console.log('An error happened')
           console.log(error)
-        },
+        }
       )
     }
   }, [scene, gltf, camera])
 
   useFrame(({ clock }, delta) => {
     const t = clock.getElapsedTime()
-
-    // const p = camera.position.clone()
-    // p.x -= - 0.5
-    // p.y -= 1.2
-    // setAvatarPosition(p)
-
+    
     if (avatar.current) {
       avatar.current.update(delta)
 
       avatar.current.lookAt?.lookAt(camera.position)
-      // avatar.current.scene.rotation.y = Math.PI * Math.sin(clock.getElapsedTime())
-      // const p = camera.position.clone()
-      // p.z += - 1.0
-      // p.y -= 1.2
-      // avatar.current.scene.position.x = p.x
-      // avatar.current.scene.position.y = p.y
-      // avatar.current.scene.position.z = p.z
 
-      const blinkDelay = 10
-      const blinkFrequency = 3
+      const blinkDelay = 10 + Math.floor(seed * 3)
+      const blinkFrequency = 2 + Math.floor(seed * 4)
       if (Math.round(t * blinkFrequency) % blinkDelay === 0) {
-        avatar.current.expressionManager.setValue('blink', 1 - Math.abs(Math.sin(t * blinkFrequency * Math.PI)))
+        avatar.current.expressionManager.setValue(
+          'blink',
+          1 - Math.abs(Math.sin(t * blinkFrequency * Math.PI))
+        )
       }
-      avatar.current.expressionManager.setValue('neutral', controls.Neutral)
-      avatar.current.expressionManager.setValue('angry', controls.Angry)
-      avatar.current.expressionManager.setValue('relaxed', controls.Relaxed)
-      avatar.current.expressionManager.setValue('happy', controls.Happy)
-      avatar.current.expressionManager.setValue('sad', controls.Sad)
-      avatar.current.expressionManager.setValue('Surprised', controls.Surprised)
-      avatar.current.expressionManager.setValue('Extra', controls.Extra)
+      avatar.current.expressionManager.setValue(
+        'neutral',
+        person.expression?.Neutral ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'angry',
+        person.expression?.Angry ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'relaxed',
+        person.expression?.Relaxed ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'happy',
+        person.expression?.Happy ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'sad',
+        person.expression?.Sad ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'Surprised',
+        person.expression?.Surprised ?? 0.0
+      )
+      // avatar.current.expressionManager.setValue('Extra', 0.0)
     }
     if (bonesStore.neck) {
       bonesStore.neck.rotation.y = (Math.PI / 100) * Math.sin((t / 4) * Math.PI)
@@ -157,9 +176,12 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
     // }
 
     if (bonesStore.upperChest) {
-      bonesStore.upperChest.rotation.y = (Math.PI / 600) * Math.sin((t / 8) * Math.PI + seed * 10)
-      bonesStore.spine.position.y = (Math.PI / 400) * Math.sin((t / 2) * Math.PI + seed * 10)
-      bonesStore.spine.position.z = (Math.PI / 600) * Math.sin((t / 2) * Math.PI + seed * 10)
+      bonesStore.upperChest.rotation.y =
+        (Math.PI / 600) * Math.sin((t / 8) * Math.PI + seed * 10)
+      bonesStore.spine.position.y =
+        (Math.PI / 400) * Math.sin((t / 2) * Math.PI + seed * 10)
+      bonesStore.spine.position.z =
+        (Math.PI / 600) * Math.sin((t / 2) * Math.PI + seed * 10)
     }
     if (bonesStore.head) {
       // bonesStore.head.rotation.y -= controls.Head * Math.PI
@@ -175,16 +197,54 @@ const Avatar = forwardRef(({ path = '/Arona220601_03.vrm', position = [0, 0, 0],
       bonesStore.rightArm.rotation.z = controls.rightArm * Math.PI
     }
   })
+
+  const position = new THREE.Vector3(
+    person.position?.x ?? 0,
+    person.position?.y ?? 0,
+    person.position?.z ?? 0
+  )
+  let rotation = new THREE.Euler().setFromVector3(
+    new THREE.Vector3(
+      person.rotation?.x ?? 0,
+      person.rotation?.y ?? 0,
+      person.rotation?.z ?? 0
+    )
+  )
+  const quert = new THREE.Quaternion().setFromEuler(rotation)
+  // quert.y = quert.y >= Math.PI ? quert.y - Math.PI : quert.y + Math.PI
+
+  // console.log(gltf.scene)
+  rotation = new THREE.Euler().setFromQuaternion(quert)
+
   return (
-    <group position={position} rotation={rotation} ref={ref} avatarId={avatarId}>
-      {gltf ? (
-        <>
-          <primitive object={gltf.scene} />
-        </>
-      ) : (
-        <Html center>{progress} % loaded</Html>
-      )}
-    </group>
+    <>
+      <group
+        position={[position.x, position.y - 0.4, position.z]}
+        rotation={rotation}
+        avatarId={avatarId}
+        ref={ref}
+      >
+        <Html center occlude position={[0, 0.7, 0]}>
+          <p style={{ fontSize: '5px', width: '100px' }}>{person.name}</p>
+        </Html>
+        <group rotation={[0, Math.PI, 0]}>
+          {gltf ? (
+            <Float
+              speed={1 + seed} // Animation speed, defaults to 1
+              rotationIntensity={1} // XYZ rotation intensity, defaults to 1
+              floatIntensity={1} // Up/down float intensity, works like a multiplier with floatingRange,defaults to 1
+              floatingRange={[-0.1, 0.1]} // Range of y-axis values the object will float within, defaults to [-0.1,0.1]
+            >
+              <>
+                <primitive object={gltf.scene} />
+              </>
+            </Float>
+          ) : (
+            <Html center>{progress} % loaded</Html>
+          )}
+        </group>
+      </group>
+    </>
   )
 })
 

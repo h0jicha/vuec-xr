@@ -1,289 +1,245 @@
 import {
-  useGLTF,
-  OrbitControls,
   Environment,
-  Html,
-  useProgress,
   useKeyboardControls,
   PointerLockControls,
 } from '@react-three/drei'
 import { Perf } from 'r3f-perf'
-import {
-  InstancedRigidBodies,
-  CylinderCollider,
-  BallCollider,
-  CuboidCollider,
-  Debug,
-  RigidBody,
-  Physics,
-} from '@react-three/rapier'
+
 import { useMemo, useEffect, useState, useRef, Suspense } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import * as THREE from 'three'
 import { UECSite } from './UECSite'
-import Player from './Player.js'
 // import Avatar from './vrmutils/Avatar'
 import Avatar from './Avatar'
 import Ocean from './Ocean'
 import { useControls } from 'leva'
 import { useXR } from '@react-three/xr'
-import { log } from 'console'
 import React from 'react'
 
-import { io, Socket } from 'socket.io-client'
 import useStore from './store/useStore'
+import useControlsStore from './store/useControlsStore'
 
-import { gsap } from "gsap";
+import { gsap } from 'gsap'
+import Dictaphone from './Dictaphone'
+import { Quaternion, Vector3, Euler, Group } from 'three'
 
+const EPSILON_ANGLE = 0.001
 
 export default function Experience(props) {
   // const [hitSound] = useState(() => new Audio('./hit.mp3'))
-  const cube = useRef(null)
-  const avatar = useRef(null)
-  const avatarGroup = useRef(null)
+  // const cube = useRef(null)
+  // const avatar = useRef(null)
+  const avatarGroup = useRef<Group>(null)
 
-  const controls = useRef(null)
-
-  const { speed } = useControls({ speed: 10.0 })
-  const { showEnv } = useControls({ showEnv: true })
+  const speed = 7.0
+  // const { speed } = useControls({ speed: 7.0 })
+  const { ARViewSetting } = useControls({ ARViewSetting: false })
+  const { debugMode } = useControls({ debugMode: false })
 
   const xr = useXR()
-  const { camera } = useThree()
+  const { camera, canvas } = useThree()
 
+  /**
+   * Controls
+   */
+  // PointerLockControls
+  const pointerLockControlsRef = useRef<typeof PointerLockControls>(null)
+  const pointerLocked = useControlsStore<boolean>(
+    (state) => state.pointerLocked
+  )
+
+  // KeyboardControls
+  const keyboardControlsEnabled = useControlsStore(
+    (state) => state.keyboardControlsEnabled
+  )
   const moveForward = useKeyboardControls((state) => state.forward)
   const moveBackward = useKeyboardControls((state) => state.backward)
   const moveLeft = useKeyboardControls((state) => state.leftward)
   const moveRight = useKeyboardControls((state) => state.rightward)
 
-  const socket = useStore(state => state.socket)
-  const clientId = useStore(state => state.clientId)
-  const setClientId = useStore(state => state.setClientId)
-  const connections = useStore(state => state.connections)
-  const setConnections = useStore(state => state.setConnections)
-  const delConnections = useStore(state => state.delConnections)
+  /**
+   * Other States
+   */
+  const socket = useStore((state) => state.socket)
+  const myPersonId = useStore((state) => state.myPersonId)
+  const setMyPersonId = useStore((state) => state.setMyPersonId)
+  const personDict = useStore<PersonDict>((state) => state.personDict)
+  const setPersonDict = useStore<(personDict: PersonDict) => void>(
+    (state) => state.setPersonDict
+  )
+  const addPerson = useStore<(person: Person) => void>(
+    (state) => state.addPerson
+  )
+  const updatePerson = useStore<(person: Person) => void>(
+    (state) => state.updatePerson
+  )
+  const delPerson = useStore<(id: string) => void>(
+    (state) => state.delPerson
+  )
 
-  // const [connections, setConnections] = useState(null)
-
-  console.log(connections)
+  // カメラの回転を判定するため
+  const lastCameraRotationRef = useRef<Quaternion>(
+    new Quaternion().setFromEuler(camera.rotation)
+  )
 
   // カメラの座標をサーバーに送信する関数
-  const sendPosition = (position) => {
-    if (!clientId) {
+  const sendPose = (position: Vector3, rotation: Euler) => {
+    if (!myPersonId) {
       return //
     }
-    const positionData = {
+    const p = {
       x: position.x,
       y: position.y,
-      z: position.z
+      z: position.z,
     }
-    socket.emit('send_position', positionData)
-  }
-  // カメラの回転をサーバーに送信する関数
-  const sendRotation = (rotation) => {
-    if (!clientId) {
-      return //
-    }
-    const rotationData = {
+    const r = {
       x: rotation.x,
       y: rotation.y,
-      z: rotation.z
+      z: rotation.z,
     }
-    socket.emit('send_rotation', rotationData)
+    // console.log('[send-pose]', p, r)
+
+    socket.emit('send-pose', { position: p, rotation: r })
+  }
+
+  interface ConnectionInfo {
+    myPerson: PersonDict // 自分のperson情報
+    personDict: PersonDict // 自分以外のperson情報
   }
 
   useEffect(() => {
-    socket.on('receive_id', async (id) => {
-      console.log('clientId: ' + id)
-      if (!id) {
-        socket.emit('check_id')
+    socket.on('setup', async (connectionInfo: ConnectionInfo) => {
+      const myPerson = connectionInfo.myPerson
+      const personDict = connectionInfo.personDict
+      const myPersonId = myPerson.id
+      // console.log('[setup]', connectionInfo)
+      if (!myPersonId) {
+        socket.emit('setup')
       }
       // id取得完了
-      setClientId(id)
+      setMyPersonId(myPersonId)
+      setPersonDict(personDict)
 
-      // 接続済みアバターの初期設定
-      socket.on('current_connections', (conns) => {
-        console.log(conns)
-        setConnections(conns)
-      })
-      socket.emit('current_connections')
-
-      // 他クライアントの座標回転受け取り
-      socket.on('receive_client_info', (clientInfo) => {
-        // console.log(clientInfo)
-        setConnections(clientInfo)
-
-        // viewもここで変更しちゃう
-        if (avatarGroup && avatarGroup.current && clientInfo.id != clientId){
-          const a = avatarGroup.current.children.find((avatar) => {
-            return avatar.avatarId === clientInfo.id
-          })
-          if (a) {
-            // console.log(a.position)
-            // position
-            const pos = {x: a.position.x, y: a.position.y, z: a.position.z }
-            gsap.to(pos, {
-              ease: 'power1.inOut',
-              x: clientInfo.position.x,
-              z: clientInfo.position.z,
-              duration: 1.0,
-              onUpdate: () => {
-                a.position.set(pos.x, 0/*clientInfo.position.y - 1.2*/, pos.z)
-              }
-            });
-
-            // rotation
-            const rot = {x: a.rotation.x, y: a.rotation.y, z: a.rotation.z }
-            gsap.to(rot, {
-              ease: 'power1.inOut',
-              y: -clientInfo.rotation.y,
-              duration: 1.0,
-              onUpdate: () => {
-                a.rotation.set(0, rot.y, 0)
-              },
-            });
-          }
-        }
+      // person情報更新
+      socket.on('update-person', (p: Person) => {
+        updatePerson(p)
+        // console.log('[update person]', p)
       })
 
-      // 定期的に座標を投げることにしてる
-      setInterval(() => {
-        sendPosition(camera.position)
-        sendRotation(camera.rotation)
-      }, 1000)
+      // 誰かの入室時
+      socket.on('someone-connected', (p: Person) => {
+        console.log('[connected]', p.id)
+        addPerson(p)
+      })
 
       // 誰かの退室時
-      socket.on('delete_connection', (id) => {
-        console.log('退室:', id)
-        delConnections(id)
-        const avatar = avatarGroup.current.children.find((avatar) => avatar.avatarId === id)
-        console.log(avatar)
-        avatarGroup.current.remove(avatar)
+      socket.on('someone-disconnected', (id) => {
+        console.log('[disconnected]', id)
+        const newPersonDict: PersonDict = Object.keys(personDict).reduce(
+          (acc, key) => {
+            if (key !== id) {
+              acc[key] = personDict[key]
+            }
+            return acc
+          },
+          {}
+        )
+        delPerson(id)
       })
-    });
+    })
 
-    socket.emit('check_id')
-  }, [clientId])
+    socket.emit('setup')
+  }, [socket])
 
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime()
 
+    const hasMoved = moveForward || moveBackward || moveLeft || moveRight
+
+    // 前フレームからカメラが回転したかを判定する
+    const currentCameraRotation = camera.quaternion.clone()
+    const angleDelta = currentCameraRotation.angleTo(
+      lastCameraRotationRef.current
+    )
+    const hasRotated = angleDelta > EPSILON_ANGLE
+
+    if (hasMoved || hasRotated) {
+      // 毎フレームやっていいのか🤔
+      // positionとrotation方がいいのでは
+      sendPose(camera.position, camera.rotation)
+    }
+
     // controls
-    // https://github.com/mrdoob/three.js/blob/master/examples/misc_controls_pointerlock.html
-    if (controls && controls.current.isLocked) {
+    if (
+      keyboardControlsEnabled &&
+      pointerLockControlsRef.current &&
+      pointerLockControlsRef.current.isLocked
+    ) {
       if (xr.session) {
-        controls.current.unlock()
+        pointerLockControlsRef.current.unlock()
       }
+
+      // console.log(moveForward, moveBackward, moveLeft, moveRight);
 
       const velocity = { x: speed, y: speed, z: speed }
       if (moveForward) {
-        controls.current.moveForward(velocity.z * delta)
+        pointerLockControlsRef.current.moveForward(velocity.z * delta)
       }
       if (moveBackward) {
-        controls.current.moveForward(-velocity.z * delta)
+        pointerLockControlsRef.current.moveForward(-velocity.z * delta)
       }
       if (moveLeft) {
-        controls.current.moveRight(-velocity.x * delta)
+        pointerLockControlsRef.current.moveRight(-velocity.x * delta)
       }
       if (moveRight) {
-        controls.current.moveRight(velocity.x * delta)
+        pointerLockControlsRef.current.moveRight(velocity.x * delta)
       }
     }
+
+    lastCameraRotationRef.current = currentCameraRotation.clone()
   })
-
-  const cubeJump = () => {
-    const mass = cube.current.mass()
-
-    cube.current.applyImpulse({ x: 0, y: 5 * mass, z: 0 })
-    cube.current.applyTorqueImpulse({
-      x: Math.random() - 0.5,
-      y: Math.random() - 0.5,
-      z: Math.random() - 0.5,
-    })
-  }
-
-  // const hamburger = useGLTF('./hamburger.glb')
-
-  const cubesCount = 100
-  const cubes = useRef()
-  const cubeTransforms = useMemo(() => {
-    const positions = []
-    const rotations = []
-    const scales = []
-
-    for (let i = 0; i < cubesCount; i++) {
-      positions.push([
-        (Math.random() - 0.5) * 80 * 3,
-        6 + i * 0.2,
-        (Math.random() - 0.5) * 80 * 3,
-      ])
-      rotations.push([Math.random(), Math.random(), Math.random()])
-
-      const scale = 0.2 + Math.random() * 0.8
-      scales.push([scale, scale, scale])
-    }
-
-    return { positions, rotations, scales }
-  }, [])
 
   return (
     <>
-      <Perf position='top-left' />
-      <axesHelper scale={100} />
-      <gridHelper scale={1} />
+      {/* Debug */}
+      {debugMode && (
+        <>
+          <Perf position='top-left' />
+          <axesHelper scale={10} />
+          <gridHelper scale={1} />
+        </>
+      )}
 
+      {/* Controls */}
       {/* <OrbitControls makeDefault maxPolarAngle={Math.PI * 0.5} /> */}
-      {/* https://threejs.org/docs/#examples/en/controls/PointerLockControls */}
-      <PointerLockControls ref={controls} makeDefault />
+      <PointerLockControls
+        ref={pointerLockControlsRef}
+        args={[camera, canvas]}
+        enabled={pointerLocked}
+      />
 
+      {/* Environment */}
       <directionalLight castShadow position={[1, 2, 3]} intensity={5} />
       <ambientLight intensity={0.4} />
+      <Environment
+        files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
+        // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
+        background={!ARViewSetting}
+      />
 
-      {showEnv && <Environment
-        // files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/rustig_koppie_puresky_4k.hdr'
-        files='https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/drakensberg_solitary_mountain_puresky_4k.hdr'
-        background
-      />}
-
-      <Avatar path='sampleF.vrm' ref={avatar} />
-      <group ref={avatarGroup}>        
-      {connections && Object.entries(connections).map(entry => {
-          const [id, content] = entry
-          // let position, rotation = null
-          // if (id && content.position && content.rotation) {
-          //   position = [content.position.x, content.position.y - 1.2, content.position.z + 1.0]
-          //   rotation = [0, content.rotation.y + Math.PI, 0]
-          // }
-          return <Avatar key={id} avatarId={id}/>
-        })}
+      {/* Meshes */}
+      <UECSite scale={1} position={[-74, 0, 55]}></UECSite>
+      <group ref={avatarGroup}>
+        {personDict && // todo: ここのイテレーションが処理のカク月になっている気がするので、なくしたい
+          Object.entries(personDict).map((arr) => {
+            const [personId, person] = arr
+            // console.log(arr)
+            if (personId !== myPersonId) {
+              return (
+                <Avatar key={personId} avatarId={personId} person={person} />
+              )
+            }
+          })}
       </group>
-      <Avatar path='transparent.vrm' position={[1, 0, 0]} />
-      <Avatar path='transparent.vrm' position={[2, 0, 0]} />
-      <Avatar path='transparent.vrm' position={[3, 0, 0]} />
-
-      <Physics gravity={[0, -9.81, 0]}>
-        <RigidBody type='fixed' colliders={'trimesh'} position={[0, 0, 0]}>
-          {/* <Suspense fallback={null}> */}
-          <UECSite scale={1} position={[90, 0, 90]}></UECSite>
-          {/* </Suspense> */}
-        </RigidBody>
-
-        <InstancedRigidBodies
-          type='fixed'
-          positions={cubeTransforms.positions}
-          rotations={cubeTransforms.rotations}
-          scales={cubeTransforms.scales}
-        >
-          <instancedMesh
-            ref={cubes}
-            castShadow
-            receiveShadow
-            args={[null, null, cubesCount]}
-          >
-            <boxGeometry />
-            <meshStandardMaterial color='tomato' />
-          </instancedMesh>
-        </InstancedRigidBodies>
-      </Physics>
     </>
   )
 }

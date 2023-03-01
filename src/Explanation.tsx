@@ -1,119 +1,180 @@
 import useChatService from './useChatService'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useKeyboardControls } from '@react-three/drei'
+import 'regenerator-runtime'
+import React from 'react'
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from 'react-speech-recognition'
+import { button, useControls } from 'leva'
+import useControlsStore from './store/useControlsStore'
+import { useThree } from '@react-three/fiber'
+
+const STR_PLACEHOLDER = 'Enter to send'
 
 export default function Explanation() {
-  const [messages, sendMessage] = useChatService({
-    name: '？？？',
-    text: `zzz`,
-  })
+  const [chatUnits, sendMessage] = useChatService()
 
-  const prompt = useRef(null)
+  const p1Ref = useRef<HTMLParagraphElement>(null)
+  const p2Ref = useRef<HTMLParagraphElement>(null)
 
-  // const ctrl = useKeyboardControls((state) => state.ctrl)
+  const [inputValue, setInputValue] = useState('');
 
-  if (typeof window === 'object' && document.querySelector('.interface') && prompt.current /*&& ctrl*/) {
-    const present = document.querySelector('.interface').style['pointer-events']
-
-    if (present === 'none') {
-      console.log(prompt.current)
-      // document.querySelector('.interface').style['pointer-events'] = 'auto'
-      // prompt.current.disabled = false
-    } else {
-      // document.querySelector('.interface').style['pointer-events'] = 'none'
-      // prompt.current.disabled = true
-    }
-  }
+  /**
+   * Controls
+   */
+  // KeyboardControls
+  const textInputRef = useRef<HTMLInputElement>(null)
+  const setKeyboardControlsEnabled = useControlsStore(
+    (state) => state.setKeyboardControlsEnabled
+  )
 
   useEffect(() => {
-    sendMessage('あなた', '')
-    console.log(messages)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === '/' && textInputRef.current) {
+        textInputRef.current.focus()
+      }
+      if (event.key === 'Escape' && textInputRef.current) {
+        textInputRef.current.blur()
+      }
+      if (event.keyCode === 13 &&
+        textInputRef.current &&
+        textInputRef.current.value != ''
+      ) {
+        // IME変換確定でないEnter押下時
+        // textInputRef.current.blur()
+        document.body.focus()
+        sendMessage(textInputRef.current.value)
+        textInputRef.current.value = ''
+
+        // 簡単にクールタイム実装
+        textInputRef.current.placeholder = `クールタイム中`
+        setTimeout(() => {
+          textInputRef.current.placeholder = STR_PLACEHOLDER
+        }, 1000)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
-  // 音声を再生する
-  if (messages && messages.voice) {
-    const audio = new Audio()
-    audio.src = URL.createObjectURL(new Blob([messages.voice]))
-    audio.play()
-    messages.voice = null
+  const handleTextAreaFocus = () => {
+    setKeyboardControlsEnabled(false)
   }
 
-  // テキストを1文字ずつ出力する
-  if (messages && messages.text && prompt.current) {
-    console.log(messages)
-    if (messages.prompt) {
-      printStringByChar(messages.prompt, 'question-text')
-    }
-    printStringByChar(messages.text, 'answer-text')
+  const handleTextAreaBlur = () => {
+    setKeyboardControlsEnabled(true)
   }
 
-  const handleKeyDown = (e) => {
-    if (e.keyCode === 13) {
-      // prompt.current.disabled = true
-      // document.querySelector('.interface').style['pointer-events'] = 'none'
+  /**
+   * Speech Recognition
+   */
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition()
 
-      console.log(prompt.current)
-      sendMessage('あなた', prompt.current.value)
-      printStringByChar(prompt.current.value, 'question-text')
-      prompt.current.value = ''
-      document.getElementById('answer-text').innerText = '（思考中...）'
-    }
-    if (e.keyCode === 243) {
-      console.log('esc')
-    }
+  // const { talk } = useControls({
+  //   talk: browserSupportsSpeechRecognition
+  //     ? button(() => {
+  //       handleSpeechRecognitionStart()
+  //       })
+  //     : '音声認識非対応（chromeで入室してください）',
+  // })
+  // const { forceSend } = useControls({
+  //   forceSend: browserSupportsSpeechRecognition
+  //     ? button(() => {
+  //       handleSpeechRecognitionFinish()
+  //       })
+  //     : '音声認識非対応（chromeで入室してください）',
+  // })
+
+  const handleSpeechRecognitionStart = () => {
+    SpeechRecognition.startListening()
   }
 
-  // if (prompt.current) {
-  //   prompt.current.value = ''
-  //   prompt.current.disabled = true
-  //   document.querySelector('.interface').style['pointer-events'] = 'none'
-  //   // setTimeout(() => {
-  //   //   prompt.current.disabled = document.querySelector('.interface').style['pointer-events'] !== 'none' ? false : true
-  //   //   prompt.current.value = ''
-  //   // }, 3000)
-  // }
+  const handleSpeechRecognitionFinish = () => {
+    sendMessage(textInputRef.current?.innerText)
+  }
+
+  // transcriptが更新されたらinputValueも更新する
+  useEffect(() => {
+    setInputValue(transcript);
+  }, [transcript]);
+
+  // 録音終了直後に投げる
+  // useEffect(() => {
+  //   console.log('listening', listening);
+  //   if (!listening)
+  //   sendMessage(transcript)
+  // }, [listening]);
+
+
+  useEffect(() => {
+    const chatUnit: ChatUnit = chatUnits[chatUnits.length - 1]
+
+    // 文章表示
+    if (chatUnit?.text) {
+      printStringByChar(`${chatUnit.nameFrom}「${chatUnit.text}」`, p1Ref)
+    }
+
+    // 音声再生
+    if (chatUnit?.voice) {
+      const audio = new Audio()
+      audio.src = URL.createObjectURL(new Blob([chatUnit.voice]))
+      audio.play()
+      chatUnits[chatUnits.length - 1].voice = null
+    }
+  }, [chatUnits])
 
   return (
-    <div className='interface'>
-      <div className='explanation'>
-        {/* Lorem ipsum dolor sit amet consectetur, adipisicing elit. Unde odio
-        porro voluptate vero officiis laborum iste, veritatis nobis et tempora
-        sunt a dolorum reiciendis illum excepturi inventore, illo nulla facere? */}
-        {/* 「やっと会うことができました！私はここで先生をずっと、ずーっと待っていました！」 */}
-        <p id='question'>
-          {messages.senderName ? messages.senderName : 'あなた'}「<span id='question-text'></span>」
-        </p>
-        <p id='answer'>
-          {messages.name ?? ''}「<span id='answer-text'></span>」
-        </p>
-        <p id='prompt'>
-          {/* <label htmlFor='prompt'>あなた</label> */}
-          {/* 「 */}
-          <input ref={prompt} type='text' name='prompt' size='80%' onKeyDown={(e) => handleKeyDown(e)} />
-          {/* 」 */}
-        </p>
+    <div className='explanation'>
+      <p ref={p1Ref}></p>
+      <div>
+        <input
+          type='text'
+          ref={textInputRef}
+          className='chat_input'
+          onFocus={handleTextAreaFocus}
+          onBlur={handleTextAreaBlur}
+          placeholder={STR_PLACEHOLDER}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+        />
+        {listening ?
+          <button disabled>認識中</button>
+          :
+          <button onClick={handleSpeechRecognitionStart}>マイクで話す</button>
+        }
       </div>
     </div>
   )
 }
 
-const INCR_MODE = false
-function printStringByChar(string, id) {
+const INCREMENTAL_MODE = true
+let interval: NodeJS.Timer
+
+function printStringByChar(string, ref) {
   let i = 0
-  // const answerElement = document.getElementById(id)
-  document.getElementById(id).innerText = ''
-  const interval = setInterval(function () {
-    if (INCR_MODE) {
+  ref.current.innerText = ''
+  interval = setInterval(function () {
+    if (INCREMENTAL_MODE) {
       if (i < string.length) {
-        document.getElementById(id).innerText += string.charAt(i)
+        ref.current.innerText += string.charAt(i)
         i++
       } else {
         clearInterval(interval)
       }
     } else {
-      document.getElementById(id).innerText = string
+      ref.current.innerText = string
       clearInterval(interval)
     }
-    // }, 120);
-  }, 3)
+  }, 40)
+  // }, 3)
 }

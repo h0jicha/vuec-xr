@@ -1,39 +1,47 @@
 import { io } from 'socket.io-client'
 import create, { State } from 'zustand'
 
-const ENDPOINT = 'http://104.198.111.108'
+const ENDPOINT = 'https://vuecxr.ddns.net'
+// const ENDPOINT = 'http://192.168.11.3:3000'
 
 const useStore = create<State>((set, get) => ({
   socket: io(ENDPOINT),
-  clientId: null,
-  setClientId: (id) => set(state => ({ clientId: id })),
-  // increase: () => set(state => ({ count: state.count + 1 })),
-  // decrease: () => set(state => ({ count: state.count - 1 }))
-  connections: [],
-  setConnections: (connection) => set((state) => {
-    const conns = Object.entries(state.connections).filter(([key]) => key !== 'undefined')
-      .reduce((obj, [key, value]) => {
-        obj[key] = value
-        return obj
-      }, {})
-    return {
-      connections: {
-        ...conns,
-        [connection.id]: {
-          position: connection.position,
-          rotation: connection.rotation
+  myPersonId: null,
+  setMyPersonId: (id) => set((state) => ({ myPersonId: id })),
+  personDict: {},
+  setPersonDict: (pDict: PersonDict) =>
+    set((state) => {
+      return {
+        ...state,
+        personDict: pDict
+      }
+    }),
+  addPerson: (p: Person) =>
+    set((state) => {
+      return {
+        personDict: {
+          ...state.personDict,
+          [p.id]: p
         }
       }
-    }
-  }),
-  delConnections: (id) => set((state) => {
-    console.log('hoge', id)
-      const newConnections = Object.fromEntries(
-        Object.entries(state.connections).filter(([key]) => key !== id)
-      )
-      console.log('hoge', newConnections)
+    }),
+  updatePerson: (p: Person) =>
+    set((state) => {
       return {
-        connections: newConnections
+        personDict: {
+          ...state.personDict,
+          [p.id]: {
+            ...state.personDict[p.id],
+            ...p
+          }
+        }
+      }
+    }),
+  delPerson: (id: string) =>
+    set((state) => {
+      const { [id]: deletedPerson, ...restPersonDict } = state.personDict
+      return {
+        personDict: restPersonDict
       }
     }),
 }))
