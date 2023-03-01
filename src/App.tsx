@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import './style.css'
 import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
@@ -9,8 +9,18 @@ import XRExperience from './XRExperience'
 import Dictaphone from './Dictaphone'
 import useControlsStore from './store/useControlsStore'
 import HTMLInterface from './HTMLInterface'
+import useStore from './store/useStore'
 
 function App() {
+  const socket = useStore((state) => state.socket)
+
+  useEffect(() => {
+    return () => {
+      socket.disconnect()
+    }
+  })
+
+
   return (
     <>
       <KeyboardControls

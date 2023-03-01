@@ -12,7 +12,7 @@ export default function GlobalInfo() {
 
   useEffect(() => {
     if (infoRef1.current && infoRef2.current) {
-      infoRef1.current.innerText = socket.connected ? `📡online 現在の入室者: ${currentPersonNum + 1} 人` : 'offline'
+      infoRef1.current.innerText = socket.connected ? `online 現在の入室者: ${currentPersonNum + 1} 人 (me: ${socket.id})` : 'offline'
     }
     infoRef2.current.innerText = persons.map((p) => p.name?.length > 7 ? `${p.name.slice(0, 7)}...` : p.name).join(', ')
   }, [personDict, socket])

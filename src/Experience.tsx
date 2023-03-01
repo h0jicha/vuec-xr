@@ -30,12 +30,10 @@ export default function Experience(props) {
   // const avatar = useRef(null)
   const avatarGroup = useRef<Group>(null)
 
-  const { speed } = useControls({ speed: 5.0 })
+  const speed = 7.0
+  // const { speed } = useControls({ speed: 7.0 })
   const { ARViewSetting } = useControls({ ARViewSetting: false })
-  useControls({ 操作説明: `
-  - PC: マウスでカメラ操作+キーで移動
-  - スマホ: ARView（実験的）
-  ` })
+  const { debugMode } = useControls({ debugMode: false })
 
   const xr = useXR()
   const { camera, canvas } = useThree()
@@ -58,34 +56,30 @@ export default function Experience(props) {
   const moveLeft = useKeyboardControls((state) => state.leftward)
   const moveRight = useKeyboardControls((state) => state.rightward)
 
-  // Debug mode
-  const { debugMode } = useControls({ debugMode: false })
-
   /**
    * Other States
    */
   const socket = useStore((state) => state.socket)
   const myPersonId = useStore((state) => state.myPersonId)
   const setMyPersonId = useStore((state) => state.setMyPersonId)
-  const connections = useStore((state) => state.connections)
-  const setConnections = useStore((state) => state.setConnections)
-  const addConnections = useStore((state) => state.addConnections)
-  const delConnections = useStore((state) => state.delConnections)
   const personDict = useStore<PersonDict>((state) => state.personDict)
-  const setPersonDict = useStore<(PersonDict: PersonDict) => void>(
+  const setPersonDict = useStore<(personDict: PersonDict) => void>(
     (state) => state.setPersonDict
   )
-
-  // const [personDict, setPersonDict] = useState<PersonDict>({})
+  const addPerson = useStore<(person: Person) => void>(
+    (state) => state.addPerson
+  )
+  const updatePerson = useStore<(person: Person) => void>(
+    (state) => state.updatePerson
+  )
+  const delPerson = useStore<(id: string) => void>(
+    (state) => state.delPerson
+  )
 
   // カメラの回転を判定するため
   const lastCameraRotationRef = useRef<Quaternion>(
     new Quaternion().setFromEuler(camera.rotation)
   )
-
-  // const [connections, setConnections] = useState(null)
-
-  // console.log(connections)
 
   // カメラの座標をサーバーに送信する関数
   const sendPose = (position: Vector3, rotation: Euler) => {
@@ -102,64 +96,59 @@ export default function Experience(props) {
       y: rotation.y,
       z: rotation.z,
     }
-    console.log('[send-pose]', p, r)
+    // console.log('[send-pose]', p, r)
 
     socket.emit('send-pose', { position: p, rotation: r })
   }
 
+  interface ConnectionInfo {
+    myPerson: PersonDict // 自分のperson情報
+    personDict: PersonDict // 自分以外のperson情報
+  }
+
   useEffect(() => {
-    socket.on('receive_id', async (id) => {
-      console.log('[myPersonId]', id)
-      if (!id) {
-        socket.emit('check_id')
+    socket.on('setup', async (connectionInfo: ConnectionInfo) => {
+      const myPerson = connectionInfo.myPerson
+      const personDict = connectionInfo.personDict
+      const myPersonId = myPerson.id
+      // console.log('[setup]', connectionInfo)
+      if (!myPersonId) {
+        socket.emit('setup')
       }
       // id取得完了
-      setMyPersonId(id)
+      setMyPersonId(myPersonId)
+      setPersonDict(personDict)
 
-      // 接続済みアバターの初期設定
-      socket.on('current_connections', (conns) => {
-        console.log('[connections]', conns)
-        setConnections(conns)
-
-        // person情報更新
-        socket.on('update-person', (p: Person) => {
-          setPersonDict({
-            ...personDict,
-            [p.id]: p,
-          })
-          console.log('[update person]', p)
-        })
-
-        // 誰かの入室時
-        socket.on('someone-connected', (p: Person) => {
-          console.log('入室:', p.id)
-          addConnections(p.id)
-          setPersonDict({
-            ...personDict,
-            [p.id]: p,
-          })
-        })
-
-        // 誰かの退室時
-        socket.on('someone-disconnected', (id) => {
-          console.log('退室:', id)
-          delConnections(id)
-          const newPersonDict: PersonDict = Object.keys(personDict).reduce(
-            (acc, key) => {
-              if (key !== id) {
-                acc[key] = personDict[key]
-              }
-              return acc
-            },
-            {}
-          )
-          setPersonDict(newPersonDict)
-        })
+      // person情報更新
+      socket.on('update-person', (p: Person) => {
+        updatePerson(p)
+        // console.log('[update person]', p)
       })
-      socket.emit('current_connections')
+
+      // 誰かの入室時
+      socket.on('someone-connected', (p: Person) => {
+        console.log('[connected]', p.id)
+        addPerson(p)
+      })
+
+      // 誰かの退室時
+      socket.on('someone-disconnected', (id) => {
+        console.log('[disconnected]', id)
+        const newPersonDict: PersonDict = Object.keys(personDict).reduce(
+          (acc, key) => {
+            if (key !== id) {
+              acc[key] = personDict[key]
+            }
+            return acc
+          },
+          {}
+        )
+        delPerson(id)
+      })
     })
-    socket.emit('check_id')
-  }, [])
+
+    socket.emit('setup')
+  }, [socket])
 
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime()
@@ -171,9 +160,6 @@ export default function Experience(props) {
     const angleDelta = currentCameraRotation.angleTo(
       lastCameraRotationRef.current
     )
-    if (angleDelta > EPSILON_ANGLE) {
-      console.log('Camera has rotated!')
-    }
     const hasRotated = angleDelta > EPSILON_ANGLE
 
     if (hasMoved || hasRotated) {
@@ -215,12 +201,13 @@ export default function Experience(props) {
   return (
     <>
       {/* Debug */}
-      {debugMode ?? <>
-        <Perf position='top-left' />
-        <axesHelper scale={10} />
-        <gridHelper scale={1} />
+      {debugMode && (
+        <>
+          <Perf position='top-left' />
+          <axesHelper scale={10} />
+          <gridHelper scale={1} />
         </>
-      }
+      )}
 
       {/* Controls */}
       {/* <OrbitControls makeDefault maxPolarAngle={Math.PI * 0.5} /> */}
@@ -245,7 +232,7 @@ export default function Experience(props) {
         {personDict && // todo: ここのイテレーションが処理のカク月になっている気がするので、なくしたい
           Object.entries(personDict).map((arr) => {
             const [personId, person] = arr
-            console.log(arr)
+            // console.log(arr)
             if (personId !== myPersonId) {
               return (
                 <Avatar key={personId} avatarId={personId} person={person} />

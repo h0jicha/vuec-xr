@@ -33,7 +33,7 @@ interface Person {
   chatMemory: string[]
   position?: Vec3
   rotation?: Vec3
-  currentExpression?: Expression
+  expression?: Expression
   avatarName?: string
   responsePolicyInitFunc: Function
   responsePolicyIterFunc: Function

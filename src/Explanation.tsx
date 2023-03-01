@@ -18,6 +18,8 @@ export default function Explanation() {
   const p1Ref = useRef<HTMLParagraphElement>(null)
   const p2Ref = useRef<HTMLParagraphElement>(null)
 
+  const [inputValue, setInputValue] = useState('');
+
   /**
    * Controls
    */
@@ -40,7 +42,6 @@ export default function Explanation() {
         textInputRef.current.value != ''
       ) {
         // IME変換確定でないEnter押下時
-        console.log(textInputRef.current.value)
         // textInputRef.current.blur()
         document.body.focus()
         sendMessage(textInputRef.current.value)
@@ -79,29 +80,41 @@ export default function Explanation() {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition()
 
-  const { talk } = useControls({
-    talk: browserSupportsSpeechRecognition
-      ? button(() => {
-        handleSpeechRecognitionStart()
-        })
-      : '音声認識非対応（chromeで入室してください）',
-  })
-  const { forceSend } = useControls({
-    forceSend: browserSupportsSpeechRecognition
-      ? button(() => {
-        handleSpeechRecognitionFinish()
-        })
-      : '音声認識非対応（chromeで入室してください）',
-  })
-  console.log(listening)
+  // const { talk } = useControls({
+  //   talk: browserSupportsSpeechRecognition
+  //     ? button(() => {
+  //       handleSpeechRecognitionStart()
+  //       })
+  //     : '音声認識非対応（chromeで入室してください）',
+  // })
+  // const { forceSend } = useControls({
+  //   forceSend: browserSupportsSpeechRecognition
+  //     ? button(() => {
+  //       handleSpeechRecognitionFinish()
+  //       })
+  //     : '音声認識非対応（chromeで入室してください）',
+  // })
 
   const handleSpeechRecognitionStart = () => {
     SpeechRecognition.startListening()
   }
 
   const handleSpeechRecognitionFinish = () => {
-    sendMessage(p2Ref.current?.innerText)
+    sendMessage(textInputRef.current?.innerText)
   }
+
+  // transcriptが更新されたらinputValueも更新する
+  useEffect(() => {
+    setInputValue(transcript);
+  }, [transcript]);
+
+  // 録音終了直後に投げる
+  // useEffect(() => {
+  //   console.log('listening', listening);
+  //   if (!listening)
+  //   sendMessage(transcript)
+  // }, [listening]);
+
 
   useEffect(() => {
     const chatUnit: ChatUnit = chatUnits[chatUnits.length - 1]
@@ -131,6 +144,8 @@ export default function Explanation() {
           onFocus={handleTextAreaFocus}
           onBlur={handleTextAreaBlur}
           placeholder={STR_PLACEHOLDER}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
         />
         {listening ?
           <button disabled>認識中</button>

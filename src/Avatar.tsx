@@ -21,27 +21,27 @@ interface AvatarProps {
   person: Person
 }
 
-/**
- * avatarId コンポーネントを一意に識別するためのid
- */
 const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
-  console.log(person);
-  
-  const { ...controls } = useControls({
-    Head: { value: 0, min: -0.4, max: 0.4 },
-    leftArm: { value: 0.37, min: -0.4, max: 0.4 },
-    rightArm: { value: -0.37, min: -0.4, max: 0.4 },
-    // Neutral: { value: person.currentExpression?.Neutral ?? 0., min: 0., max: 1. },
-    // Angry: { value: person.currentExpression?.Angry ?? 0., min: 0., max: 1. },
-    // Relaxed: { value: person.currentExpression?.Relaxed ?? 0., min: 0., max: 1. },
-    // Happy: { value: person.currentExpression?.Happy ?? 0., min: 0., max: 1. },
-    // Sad: { value: person.currentExpression?.Sad ?? 0., min: 0., max: 1. },
-    // Surprised: { value: person.currentExpression?.Surprised ?? 0., min: 0., max: 1. },
-    // Extra: { value: 0, min: 0, max: 1 },
-  })
-  
+  // static value
+  const controls = {
+    Head: 0,
+    leftArm: 0.37,
+    rightArm: -0.37
+  }
+  // const { ...controls } = useControls({
+  //   Head: { value: 0, min: -0.4, max: 0.4 },
+  //   leftArm: { value: 0.37, min: -0.4, max: 0.4 },
+  //   rightArm: { value: -0.37, min: -0.4, max: 0.4 },
+  //   // Neutral: { value: person.expression?.Neutral ?? 0., min: 0., max: 1. },
+  //   // Angry: { value: person.expression?.Angry ?? 0., min: 0., max: 1. },
+  //   // Relaxed: { value: person.expression?.Relaxed ?? 0., min: 0., max: 1. },
+  //   // Happy: { value: person.expression?.Happy ?? 0., min: 0., max: 1. },
+  //   // Sad: { value: person.expression?.Sad ?? 0., min: 0., max: 1. },
+  //   // Surprised: { value: person.expression?.Surprised ?? 0., min: 0., max: 1. },
+  //   // Extra: { value: 0, min: 0, max: 1 },
+  // })
+
   const { scene, camera } = useThree()
-  // const gltf = useGLTF('/three-vrm-girl.vrm')
   const [gltf, setGltf] = useState<GLTF>()
   const [progress, setProgress] = useState<number>(0)
   const avatar = useRef<VRM>()
@@ -57,17 +57,9 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
   // const path = vrmpath ?? paths[Math.floor(Math.random() * paths.length)]
   const path = './ghostWhite.vrm'
 
-  // const avatarGroup = useRef<Group>()
-  // const [avatarPosition, setAvatarPosition] = useState<Vector3>(new Vector3(0,0,0))
-
-  // const loader = new GLTFLoader()
-  // loader.register((parser) => new VRMLoaderPlugin(parser)) // here we are installing VRMLoaderPlugin
-
   useEffect(() => {
     if (!gltf) {
       // VRMUtils.removeUnnecessaryJoints(gltf.scene)
-
-      // VRM.from(gltf as GLTF).then((vrm) => {
 
       const loader = new GLTFLoader()
       loader.register((parser) => {
@@ -82,21 +74,8 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
           avatar.current = vrm
           vrm.lookAt.target = camera
 
-          // 初期位置設定
-          // const p = camera.position.clone()
-          // p.z += -1.0
-          // p.y -= 1.2
-          // vrm.scene.position.x = p.x
-          // vrm.scene.position.y = p.y
-          // vrm.scene.position.z = p.z
-
-          // vrm.scene.castShadow = true
-          // vrm.scene.receiveShadow = true
-
           vrm.humanoid.getNormalizedBoneNode(VRMHumanBoneName.Hips).rotation.y =
             Math.PI
-          // console.log(vrm.blendShapeProxy.exp  ressions)
-          // console.log(vrm.expressionManager.expressions)
           const expressionNames = vrm.expressionManager.expressions.map(
             (expression) => expression.expressionName
           )
@@ -127,7 +106,7 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
         // called as loading progresses
         (xhr) => {
           setProgress((xhr.loaded / xhr.total) * 100)
-          console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
+          // console.log((xhr.loaded / xhr.total) * 100 + '% loaded')
         },
         // called when loading has errors
         (error) => {
@@ -140,23 +119,11 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
 
   useFrame(({ clock }, delta) => {
     const t = clock.getElapsedTime()
-
-    // const p = camera.position.clone()
-    // p.x -= - 0.5
-    // p.y -= 1.2
-    // setAvatarPosition(p)
-
+    
     if (avatar.current) {
       avatar.current.update(delta)
 
       avatar.current.lookAt?.lookAt(camera.position)
-      // avatar.current.scene.rotation.y = Math.PI * Math.sin(clock.getElapsedTime())
-      // const p = camera.position.clone()
-      // p.z += - 1.0
-      // p.y -= 1.2
-      // avatar.current.scene.position.x = p.x
-      // avatar.current.scene.position.y = p.y
-      // avatar.current.scene.position.z = p.z
 
       const blinkDelay = 10 + Math.floor(seed * 3)
       const blinkFrequency = 2 + Math.floor(seed * 4)
@@ -166,12 +133,30 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
           1 - Math.abs(Math.sin(t * blinkFrequency * Math.PI))
         )
       }
-      avatar.current.expressionManager.setValue('neutral', person.currentExpression?.Neutral ?? 0.0)
-      avatar.current.expressionManager.setValue('angry', person.currentExpression?.Angry ?? 0.0)
-      avatar.current.expressionManager.setValue('relaxed', person.currentExpression?.Relaxed ?? 0.0)
-      avatar.current.expressionManager.setValue('happy', person.currentExpression?.Happy ?? 0.0)
-      avatar.current.expressionManager.setValue('sad', person.currentExpression?.Sad ?? 0.0)
-      avatar.current.expressionManager.setValue('Surprised', person.currentExpression?.Surprised ?? 0.0)
+      avatar.current.expressionManager.setValue(
+        'neutral',
+        person.expression?.Neutral ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'angry',
+        person.expression?.Angry ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'relaxed',
+        person.expression?.Relaxed ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'happy',
+        person.expression?.Happy ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'sad',
+        person.expression?.Sad ?? 0.0
+      )
+      avatar.current.expressionManager.setValue(
+        'Surprised',
+        person.expression?.Surprised ?? 0.0
+      )
       // avatar.current.expressionManager.setValue('Extra', 0.0)
     }
     if (bonesStore.neck) {
@@ -213,12 +198,21 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
     }
   })
 
-  const position = new THREE.Vector3(person.position?.x ?? 0, person.position?.y ?? 0, person.position?.z ?? 0)
-  let rotation = new THREE.Euler().setFromVector3(new THREE.Vector3(person.rotation?.x ?? 0, person.rotation?.y ?? 0, person.rotation?.z ?? 0))
+  const position = new THREE.Vector3(
+    person.position?.x ?? 0,
+    person.position?.y ?? 0,
+    person.position?.z ?? 0
+  )
+  let rotation = new THREE.Euler().setFromVector3(
+    new THREE.Vector3(
+      person.rotation?.x ?? 0,
+      person.rotation?.y ?? 0,
+      person.rotation?.z ?? 0
+    )
+  )
   const quert = new THREE.Quaternion().setFromEuler(rotation)
   // quert.y = quert.y >= Math.PI ? quert.y - Math.PI : quert.y + Math.PI
 
-  console.log(quert)
   // console.log(gltf.scene)
   rotation = new THREE.Euler().setFromQuaternion(quert)
 
@@ -231,24 +225,23 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
         ref={ref}
       >
         <Html center occlude position={[0, 0.7, 0]}>
-        <p style={{fontSize: '5px'}}>{person.name}</p>
+          <p style={{ fontSize: '5px', width: '100px' }}>{person.name}</p>
         </Html>
-        <group
-        rotation={[0, Math.PI, 0]}>
-        {gltf ? (
-          <Float
-            speed={1 + seed} // Animation speed, defaults to 1
-            rotationIntensity={1} // XYZ rotation intensity, defaults to 1
-            floatIntensity={1} // Up/down float intensity, works like a multiplier with floatingRange,defaults to 1
-            floatingRange={[-0.1, 0.1]} // Range of y-axis values the object will float within, defaults to [-0.1,0.1]
-          >
-            <>
-              <primitive object={gltf.scene} />
-            </>
-          </Float>
-        ) : (
-          <Html center>{progress} % loaded</Html>
-        )}
+        <group rotation={[0, Math.PI, 0]}>
+          {gltf ? (
+            <Float
+              speed={1 + seed} // Animation speed, defaults to 1
+              rotationIntensity={1} // XYZ rotation intensity, defaults to 1
+              floatIntensity={1} // Up/down float intensity, works like a multiplier with floatingRange,defaults to 1
+              floatingRange={[-0.1, 0.1]} // Range of y-axis values the object will float within, defaults to [-0.1,0.1]
+            >
+              <>
+                <primitive object={gltf.scene} />
+              </>
+            </Float>
+          ) : (
+            <Html center>{progress} % loaded</Html>
+          )}
         </group>
       </group>
     </>
