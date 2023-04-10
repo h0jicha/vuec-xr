@@ -1,8 +1,8 @@
 import { io } from 'socket.io-client'
 import create, { State } from 'zustand'
 
-const ENDPOINT = 'https://vuecxr.ddns.net'
-// const ENDPOINT = 'http://192.168.11.3:3000'
+const ENDPOINT = 'https://vuec-api.ddns.net'
+// const ENDPOINT = 'http://127.0.0.1:3000'
 
 const useStore = create<State>((set, get) => ({
   socket: io(ENDPOINT),

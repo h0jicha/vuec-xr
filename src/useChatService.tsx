@@ -3,8 +3,8 @@ import { io, Socket } from 'socket.io-client'
 import { text } from 'stream/consumers'
 import useStore from './store/useStore'
 
-const ENDPOINT = 'https://vuecxr.ddns.net'
-// const ENDPOINT = 'http://192.168.11.3:3000'
+const ENDPOINT = 'https://vuec-api.ddns.net'
+// const ENDPOINT = 'http://127.0.0.1:3000'
 
 const useChatService = () => {
   const [chatUnits, setChatUnits] = useState<ChatUnit[]>([])
@@ -18,8 +18,8 @@ const useChatService = () => {
   useEffect(() => {
       socket.on('receive-broadcast-message', (chatUnit: ChatUnit) => {
         console.log('[message]', `from ${chatUnit.nameFrom}`, chatUnit.text)
-        // console.log(chatUnit)
-        setChatUnits([...chatUnits, chatUnit])
+        // console.log([...chatUnits, chatUnit])
+        setChatUnits(prevChatUnits => [...prevChatUnits, chatUnit])
         updatePerson({ id: chatUnit.personIdFrom, expression: chatUnit.expression })
       })
   }, [])
@@ -29,7 +29,8 @@ const useChatService = () => {
     socket.emit('message', { text: messageText })
   }
 
-  return [chatUnits, sendMessage]
+  // console.log(chatUnits);
+  return [chatUnits, setChatUnits, sendMessage]
 }
 
 export default useChatService

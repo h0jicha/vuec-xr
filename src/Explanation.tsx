@@ -13,12 +13,13 @@ import { useThree } from '@react-three/fiber'
 const STR_PLACEHOLDER = 'Enter to send'
 
 export default function Explanation() {
-  const [chatUnits, sendMessage] = useChatService()
+  const [chatUnits, setChatUnits, sendMessage] = useChatService()
+  const [speaking, setSpeaking] = useState(false)
 
   const p1Ref = useRef<HTMLParagraphElement>(null)
   const p2Ref = useRef<HTMLParagraphElement>(null)
 
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState('')
 
   /**
    * Controls
@@ -37,7 +38,8 @@ export default function Explanation() {
       if (event.key === 'Escape' && textInputRef.current) {
         textInputRef.current.blur()
       }
-      if (event.keyCode === 13 &&
+      if (
+        event.keyCode === 13 &&
         textInputRef.current &&
         textInputRef.current.value != ''
       ) {
@@ -80,21 +82,6 @@ export default function Explanation() {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition()
 
-  // const { talk } = useControls({
-  //   talk: browserSupportsSpeechRecognition
-  //     ? button(() => {
-  //       handleSpeechRecognitionStart()
-  //       })
-  //     : '音声認識非対応（chromeで入室してください）',
-  // })
-  // const { forceSend } = useControls({
-  //   forceSend: browserSupportsSpeechRecognition
-  //     ? button(() => {
-  //       handleSpeechRecognitionFinish()
-  //       })
-  //     : '音声認識非対応（chromeで入室してください）',
-  // })
-
   const handleSpeechRecognitionStart = () => {
     SpeechRecognition.startListening()
   }
@@ -105,21 +92,23 @@ export default function Explanation() {
 
   // transcriptが更新されたらinputValueも更新する
   useEffect(() => {
-    setInputValue(transcript);
-  }, [transcript]);
+    setInputValue(transcript)
+  }, [transcript])
 
-  // 録音終了直後に投げる
-  // useEffect(() => {
-  //   console.log('listening', listening);
-  //   if (!listening)
-  //   sendMessage(transcript)
-  // }, [listening]);
+  /**
+   * Chat Speaking
+   */
+  const handleSpeechEnd = () => {
+    setChatUnits(prevChatUnits => {
+      const newChatUnits: ChatUnit[] = [...prevChatUnits]
+      newChatUnits.shift()
+      return newChatUnits
+    })
+    setSpeaking(false)
+  }
 
-
-  useEffect(() => {
-    const chatUnit: ChatUnit = chatUnits[chatUnits.length - 1]
-
-    // 文章表示
+  const asyncChatSpeak = async (chatUnit: ChatUnit) => {
+    // テキスト表示
     if (chatUnit?.text) {
       printStringByChar(`${chatUnit.nameFrom}「${chatUnit.text}」`, p1Ref)
     }
@@ -128,10 +117,22 @@ export default function Explanation() {
     if (chatUnit?.voice) {
       const audio = new Audio()
       audio.src = URL.createObjectURL(new Blob([chatUnit.voice]))
-      audio.play()
-      chatUnits[chatUnits.length - 1].voice = null
+      audio.addEventListener('ended', () => {
+        handleSpeechEnd()
+        URL.revokeObjectURL(audio.src) // メモリ解放
+      })
+      await audio.play()
     }
-  }, [chatUnits])
+  }
+
+  useEffect(() => {
+    console.log('speaking', speaking, 'chatUnits', chatUnits)
+    if (!speaking && chatUnits.length > 0) {
+      setSpeaking(true)
+      const chatUnit: ChatUnit = chatUnits[0]
+      asyncChatSpeak(chatUnit)
+    }
+  }, [chatUnits, speaking])
 
   return (
     <div className='explanation'>
@@ -147,10 +148,16 @@ export default function Explanation() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
         />
-        {listening ?
+        {listening ? (
           <button disabled>認識中</button>
-          :
-          <button onClick={handleSpeechRecognitionStart}>マイクで話す</button>
+        ) : browserSupportsSpeechRecognition ? 
+          <button onClick={handleSpeechRecognitionStart}>
+            マイクで話す
+          </button>
+        : 
+          <button disabled>
+            マイク機能は一部Chromeでのみ利用可能
+          </button>
         }
       </div>
     </div>
