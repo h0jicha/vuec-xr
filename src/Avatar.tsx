@@ -225,7 +225,7 @@ const Avatar = forwardRef(({ avatarId, person }: AvatarProps, ref) => {
         ref={ref}
       >
         <Html center occlude position={[0, 0.7, 0]}>
-          <p style={{ fontSize: '5px', width: '100px' }}>{person.name}</p>
+          <p style={{ fontSize: '5px', width: '100px', zIndex: '-10'}}>{person.name}</p>
         </Html>
         <group rotation={[0, Math.PI, 0]}>
           {gltf ? (

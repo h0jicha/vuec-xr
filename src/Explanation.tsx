@@ -133,7 +133,7 @@ export default function Explanation() {
   }
 
   useEffect(() => {
-    console.log('speaking', speaking, 'chatUnits', chatUnits)
+    // console.log('speaking', speaking, 'chatUnits', chatUnits)
     if (!speaking && chatUnits.length > 0) {
       setSpeaking(true)
       const chatUnit: ChatUnit = chatUnits[0]
