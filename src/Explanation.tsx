@@ -1,30 +1,26 @@
 import useChatService from './useChatService'
 import { useEffect, useRef, useState } from 'react'
-import { useKeyboardControls } from '@react-three/drei'
 import 'regenerator-runtime'
 import React from 'react'
 import SpeechRecognition, {
   useSpeechRecognition,
 } from 'react-speech-recognition'
-import { button, useControls } from 'leva'
 import useControlsStore from './store/useControlsStore'
-import { useThree } from '@react-three/fiber'
 
 const STR_PLACEHOLDER = 'Enter to send'
+const INCREMENTAL_MODE = true
 
 export default function Explanation() {
   const [chatUnits, setChatUnits, sendMessage] = useChatService()
   const [speaking, setSpeaking] = useState(false)
 
   const p1Ref = useRef<HTMLParagraphElement>(null)
-  const p2Ref = useRef<HTMLParagraphElement>(null)
 
   const [inputValue, setInputValue] = useState('')
 
   /**
    * Controls
    */
-  // KeyboardControls
   const textInputRef = useRef<HTMLInputElement>(null)
   const setKeyboardControlsEnabled = useControlsStore(
     (state) => state.setKeyboardControlsEnabled
@@ -107,22 +103,33 @@ export default function Explanation() {
     setSpeaking(false)
   }
 
+  const playAudio = (chatUnit, handleSpeechEnd) => {
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(new Blob([chatUnit.voice]));
+      audio.addEventListener("ended", () => {
+        handleSpeechEnd();
+        URL.revokeObjectURL(audio.src); // メモリ解放
+        resolve(null);
+      });
+      audio.play();
+    });
+  }
+
   const asyncChatSpeak = async (chatUnit: ChatUnit) => {
+
+    let promises: Promise<unknown>[] = []
     // テキスト表示
     if (chatUnit?.text) {
-      printStringByChar(`${chatUnit.nameFrom}「${chatUnit.text}」`, p1Ref)
+      promises.push(printStringByCharAsync(`${chatUnit.nameFrom}「${chatUnit.text}」`, p1Ref))
     }
 
     // 音声再生
     if (chatUnit?.voice) {
-      const audio = new Audio()
-      audio.src = URL.createObjectURL(new Blob([chatUnit.voice]))
-      audio.addEventListener('ended', () => {
-        handleSpeechEnd()
-        URL.revokeObjectURL(audio.src) // メモリ解放
-      })
-      await audio.play()
+      promises.push(playAudio(chatUnit, handleSpeechEnd))
     }
+
+    await Promise.all(promises);
   }
 
   useEffect(() => {
@@ -164,24 +171,17 @@ export default function Explanation() {
   )
 }
 
-const INCREMENTAL_MODE = true
-let interval: NodeJS.Timer
+async function printStringByCharAsync(string, ref) {
+  let i = 0;
+  ref.current.innerText = '';
 
-function printStringByChar(string, ref) {
-  let i = 0
-  ref.current.innerText = ''
-  interval = setInterval(function () {
-    if (INCREMENTAL_MODE) {
-      if (i < string.length) {
-        ref.current.innerText += string.charAt(i)
-        i++
-      } else {
-        clearInterval(interval)
-      }
-    } else {
-      ref.current.innerText = string
-      clearInterval(interval)
-    }
-  }, 40)
-  // }, 3)
+  while (INCREMENTAL_MODE && i < string.length) {
+    ref.current.innerText += string.charAt(i);
+    i++;
+    await new Promise(resolve => setTimeout(resolve, 30));
+  }
+
+  if (!INCREMENTAL_MODE) {
+    ref.current.innerText = string;
+  }
 }
