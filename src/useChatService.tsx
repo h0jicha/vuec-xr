@@ -4,7 +4,7 @@ import { text } from 'stream/consumers'
 import useStore from './store/useStore'
 
 const ENDPOINT = 'https://vuec-api.ddns.net'
-// const ENDPOINT = 'http://127.0.0.1:3000/'
+// const ENDPOINT = 'http://127.0.0.1:3000'
 
 const useChatService = () => {
   const [chatUnits, setChatUnits] = useState<ChatUnit[]>([])

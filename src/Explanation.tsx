@@ -99,9 +99,11 @@ export default function Explanation() {
    * Chat Speaking
    */
   const handleSpeechEnd = () => {
-    const newChatUnits: ChatUnit[] = [...chatUnits]
-    newChatUnits.shift()
-    setChatUnits(newChatUnits)
+    setChatUnits(prevChatUnits => {
+      const newChatUnits: ChatUnit[] = [...prevChatUnits]
+      newChatUnits.shift()
+      return newChatUnits
+    })
     setSpeaking(false)
   }
 
